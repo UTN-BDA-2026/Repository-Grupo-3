@@ -1,0 +1,93 @@
+Instrucciones...
+
+Una vez levantados los contenedores, en postman o cualquier api, enviar esta solicitud post para crear un admin...
+
+http://localhost/api/v1/administrador
+
+{ "nombre": "Admin", "apellido": "Admin", "dni": 12345678, "correo": "admin@gmail.com","password":"12345678"}
+
+Insertar base de datos con 1.000.000 de usuarios de prueba...
+
+cd app #antes que todo parense en la carpeta correcta!
+
+docker exec -i salon_db psql -U admin -d dev_db < megabase.sql
+
+Para ver la página en el navegador:
+
+http://localhost/
+
+Se maneja todo desde el panel admin después... 
+
+___________________________________________________________________________________________________________
+
+A continuación las variables necesarias para el .env
+
+
+# --- CONFIGURACIÓN PRINCIPAL (OBLIGATORIA) ---
+FLASK_ENV=development
+
+# Credenciales de la Base de Datos Local
+POSTGRES_USER=admin
+POSTGRES_PASSWORD=1234
+POSTGRES_DEV_DB=dev_db
+POSTGRES_PROD_DB=prod_db
+
+# URIs para que SQLAlchemy se conecte (ajustar si no usas Docker)
+DEV_DATABASE_URI=postgresql://admin:1234@db:5432/dev_db
+PROD_DATABASE_URI=postgresql://admin:1234@db:5432/prod_db
+
+# Configuración de Redis (Obligatorio para caché)
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=1234
+REDIS_DB=0
+
+# Seguridad de la App
+JWT_SECRET_KEY="escribe_aqui_una_clave_secreta_aleatoria"
+MASTER_DELETE_PASSWORD="1234"
+PAYMENT_ALIAS="alias_de_prueba"
+
+
+# ==============================================================================
+# INTEGRACIONES DE TERCEROS (OPCIONALES PARA PROBAR LA APP BÁSICA)
+# Si no vas a probar estas funciones, puedes dejar estos campos en blanco ("")
+# ==============================================================================
+
+# --- Sentry (Monitoreo de Errores) ---
+SENTRY_DSN_BACKEND=""
+
+# --- Configuración de correo electrónico (SMTP) ---
+SMTP_SERVER="smtp.gmail.com"
+SMTP_PORT=465
+SENDER_EMAIL=""
+SENDER_APP_PASSWORD=""
+ADMIN_EMAIL=""
+
+# --- Configuración de Pushover (Notificaciones Push) ---
+PUSHOVER_USER_KEY=""
+PUSHOVER_API_TOKEN=""
+
+# --- Configuración de Telegram ---
+TELEGRAM_BOT_TOKEN=""
+TELEGRAM_CHAT_IDS=""
+
+# --- Configuración Dialogflow (Chatbot) ---
+DIALOGFLOW_PROJECT_ID=""
+# Ruta al archivo JSON de credenciales de Google (debes conseguir el tuyo propio)
+GOOGLE_APPLICATION_CREDENTIALS=""
+
+GOOGLE_TYPE=""
+GOOGLE_PROJECT_ID=""
+GOOGLE_PRIVATE_KEY_ID=""
+GOOGLE_PRIVATE_KEY=""
+GOOGLE_CLIENT_EMAIL=""
+GOOGLE_CLIENT_ID=""
+
+# --- CLOUDFLARE R2 / BACKUPS (OBJECT STORAGE) ---
+PASSWORD_CIFRADO="clave_para_descomprimir_backups"
+RCLONE_DESTINO=""
+R2_ENDPOINT_URL=""
+R2_ACCESS_KEY_ID=""
+R2_SECRET_ACCESS_KEY=""
+R2_BUCKET_NAME=""
+R2_PUBLIC_URL=""

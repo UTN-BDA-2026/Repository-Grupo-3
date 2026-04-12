@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Contable</title>
+    <style>
+        body { font-family: sans-serif; font-size: 12px; color: #333; }
+        h1, h2 { color: #2c3e50; }
+        h1 { font-size: 24px; text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        h2 { font-size: 18px; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+        .header-info { text-align: center; margin-bottom: 20px; color: #777; }
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; background-color: #f4f7f6; padding: 15px; border-radius: 5px; text-align: center; }
+        .summary-item h3 { margin: 0; font-size: 14px; color: #6c757d; }
+        .summary-item p { margin: 5px 0 0; font-size: 20px; font-weight: bold; }
+        .ingresos { color: #27ae60; }
+        .gastos { color: #e74c3c; }
+        .beneficio { color: #3498db; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+        .footer { position: fixed; bottom: 0; width: 100%; text-align: center; font-size: 10px; color: #aaa; }
+    </style>
+</head>
+<body>
+    <div class="footer">Reporte generado automáticamente por el Sistema de Gestión de Eventos.</div>
+    <h1>Resumen de Contabilidad</h1>
+    <div class="header-info">
+        <p><strong>Período del Reporte:</strong> {{ mes }} de {{ anio }}</p>
+        <p><strong>Fecha de Generación:</strong> {{ fecha_generacion }}</p>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-item">
+            <h3>Ingresos Totales</h3>
+            <p class="ingresos">{{ format_currency(total_ingresos) }}</p>
+        </div>
+        <div class="summary-item">
+            <h3>Gastos Totales</h3>
+            <p class="gastos">{{ format_currency(total_gastos) }}</p>
+        </div>
+        <div class="summary-item">
+            <h3>Beneficio Neto</h3>
+            <p class="beneficio">{{ format_currency(beneficio_neto) }}</p>
+        </div>
+    </div>
+
+    <h2>Desglose de Ingresos (Pagos Recibidos)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha de Pago</th>
+                <th>Cliente</th>
+                <th>Reserva (Fecha Evento)</th>
+                <th>Monto</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pago in pagos %}
+            <tr>
+                <td>{{ pago.fecha_pago.strftime('%d/%m/%Y') }}</td>
+                <td>{{ pago.reserva.usuario.nombre }} {{ pago.reserva.usuario.apellido }}</td>
+                <td>{{ pago.reserva.fecha.dia.strftime('%d/%m/%Y') }}</td>
+                <td>{{ format_currency(pago.monto) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">No se registraron ingresos en este período.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Desglose de Gastos</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Descripción</th>
+                <th>Categoría</th>
+                <th>Monto</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for gasto in gastos %}
+            <tr>
+                <td>{{ gasto.fecha.strftime('%d/%m/%Y') }}</td>
+                <td>{{ gasto.descripcion }}</td>
+                <td>{{ gasto.categoria }}</td>
+                <td>{{ format_currency(gasto.monto) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">No se registraron gastos en este período.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>

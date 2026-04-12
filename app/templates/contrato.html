@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Contrato de Alquiler de Salón de Eventos</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; color: #333; margin: 30px; }
+        h1, h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
+        h1 { font-size: 24px; }
+        h2 { font-size: 20px; margin-top: 30px; }
+        strong { font-weight: bold; }
+        ol { padding-left: 25px; }
+        li { margin-bottom: 12px; }
+        .header-info { margin-bottom: 20px; padding: 15px; background-color: #f4f7f6; border-radius: 5px; border: 1px solid #e1e1e1;}
+        .footer { margin-top: 40px; padding-top: 15px; border-top: 1px solid #ccc; font-size: 0.9em; color: #777; }
+    </style>
+</head>
+<body>
+    <h1>Contrato de Alquiler de Salón de Eventos</h1>
+    
+    <div class="header-info">
+        <p><strong>Fecha del Evento:</strong> {{ event_date }}</p>
+        <p><strong>Horario Pactado:</strong> 
+            {% if hora_inicio and hora_fin %}
+                de {{ hora_inicio }} a {{ hora_fin }} hs.
+            {% else %}
+                de 11:00 a 20:00 hs (Horario Base).
+            {% endif %}
+        </p>
+        <p><strong>Cliente (LOCATARIO):</strong> {{ user_name }} (DNI: {{ user_dni }})</p>
+        <p><strong>Capacidad Máxima Pactada:</strong> {{ cantidad_personas }} Personas</p>
+    </div>
+    
+    <h2>Términos y Condiciones</h2>
+    <p>
+      El presente contrato se celebra entre EL LOCADOR (propietario del salón) y EL LOCATARIO 
+      (usuario que realiza la reserva a través de la página web, cuyos datos personales se registran en el formulario de reserva), sujeto a las siguientes cláusulas:
+    </p>
+    
+    <ol>
+        <li>
+            <strong>Objeto:</strong> EL LOCADOR alquila a EL LOCATARIO el salón de eventos ubicado en Bolivar 1425, para uso exclusivo en la fecha y horario acordados en la reserva.
+        </li>
+        <li>
+            <strong>Uso y Responsabilidad:</strong> EL LOCADOR no se responsabiliza por el tipo de actividad o evento que se realice, siempre que sea lícito. Queda prohibida la venta de entradas, la venta o suministro de alcohol a menores de edad, el consumo de sustancias ilegales y cualquier actividad contraria a la ley. EL LOCATARIO es único responsable por cualquier daño material, accidente o hecho ocurrido durante el evento, así como de las acciones de los invitados y terceros que ingresen al salón.
+        </li>
+        <li>
+            <strong>Cumplimiento Legal:</strong> EL LOCATARIO asume toda responsabilidad por cumplir con las disposiciones legales vigentes en materia de seguridad, salubridad y control de menores. En caso de incumplimiento, EL LOCADOR queda totalmente exento de toda responsabilidad civil, penal o administrativa.
+        </li>
+        <li>
+            <strong>Daños y Limpieza:</strong> EL LOCATARIO deberá restituir el salón en las mismas condiciones en que lo recibió, siendo responsable por cualquier daño ocasionado a las instalaciones, mobiliario o equipamiento. Los gastos de reparación o reposición correrán por cuenta del LOCATARIO.
+        </li>
+        <li>
+            <strong>Pagos y Cancelaciones:</strong> EL LOCATARIO deberá abonar la seña establecida al momento de la reserva. En caso de cancelación, no habrá devolución de la seña. En caso de cancelación por parte del LOCADOR por causas de fuerza mayor, se reintegrará el monto abonado sin derecho a reclamos adicionales.
+        </li>
+        <li>
+            <strong>Penalidades:</strong> En caso de incumplimiento de alguna cláusula, EL LOCADOR podrá suspender el evento sin derecho a reclamo o reembolso, además de iniciar las acciones legales correspondientes.
+        </li>
+        <li>
+            <strong>Capacidad Confirmada y Ajustes:</strong> El presente contrato definitivo establece una capacidad autorizada de <strong>{{ cantidad_personas }} personas</strong>. En caso de requerir una capacidad superior el día del evento, EL LOCATARIO deberá coordinar previamente con EL LOCADOR el ajuste de capacidad y el pago del excedente correspondiente.
+        </li>
+        <li>
+            <strong>Jurisdicción:</strong> Para cualquier conflicto legal derivado del presente, las partes se someten a la jurisdicción de los Tribunales Ordinarios de la Segunda Circunscripción Judicial de la Provincia de Mendoza, con asiento en la ciudad de San Rafael.
+        </li>
+        <li>
+            <strong>Aceptación Digital:</strong> La aceptación del presente contrato mediante el sistema de reservas online equivale a la firma manuscrita y constituye plena conformidad legal por parte de EL LOCATARIO.
+        </li>
+        <li>
+            <strong>Firma y Conformidad:</strong> Ambas partes declaran haber leído y comprendido el presente contrato, aceptando las cláusulas aquí establecidas.
+        </li>
+    </ol>
+
+    <div class="footer">
+        <p>Contrato emitido y aceptado digitalmente el {{ acceptance_date }} desde la IP {{ acceptance_ip }}.</p>
+    </div>
+</body>
+</html>
