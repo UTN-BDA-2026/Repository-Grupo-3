@@ -12,6 +12,17 @@ cd app #antes que todo parense en la carpeta correcta!
 
 docker exec -i salon_db psql -U admin -d dev_db < megabase.sql
 
+Si el comando falla para importar la bd con los usuarios de prueba:
+
+Abro la PowerShell y ejecuto el siguiente comando: 
+cmd.exe /c "docker exec -i salon_db psql -U admin -d dev_db < megabase.sql"
+
+Luego para verificar que se hayan creado las tablas, me conecto directamenta a la bd ejecutando:
+docker exec -it salon_db psql -U admin -d dev_db
+Ya dentro:
+\dt #(para ver la lista de todas tus tablas creadas)
+\q #(para salir)
+
 Para ver la página en el navegador:
 
 http://localhost/

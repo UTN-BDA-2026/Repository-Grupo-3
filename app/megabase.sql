@@ -5,11 +5,11 @@ WITH nuevas_personas AS (
       'Maxi', 'Natalia', 'Roxana', 'Alvaro', 'Juan', 'Maria', 'Carlos', 'Laura', 'Sofia', 'Diego',
       'Matias', 'Lucia', 'Agustin', 'Florencia', 'Martin', 'Camila', 'Facundo', 'Micaela', 'Lucas', 'Julieta',
       'Franco', 'Valentina', 'Tomas', 'Martina', 'Nicolas', 'Antonella', 'Joaquin', 'Delfina', 'Ignacio', 'Paula',
-      'Gonzalo', 'Victoria', 'Emiliano', 'Daniela', 'Federico', 'Melina', 'Gaston', 'Belen', 'Leandro', 'Rocio'
+      'Gonzalo', 'Victoria', 'Emiliano', 'Daniela','Juliana', 'Federico', 'Melina', 'Gaston', 'Belen', 'Leandro', 'Rocio'
     ])[floor(random() * 40 + 1)],
     
     (ARRAY[
-      'Eula', 'Guzman', 'Ulloa', 'Castro', 'Garcia', 'Lopez', 'Perez', 'Rodriguez', 'Martinez', 'Gomez',
+      'Eula', 'Guzman', 'Ulloa', 'Castro', 'Garcia', 'Lopez','Bustos', 'Perez', 'Rodriguez', 'Martinez', 'Gomez',
       'Fernandez', 'Gonzalez', 'Diaz', 'Alvarez', 'Romero', 'Ruiz', 'Alonso', 'Torres', 'Dominguez', 'Vazquez',
       'Ramos', 'Gil', 'Ramirez', 'Sosa', 'Quiroga', 'Paz', 'Silva', 'Molina', 'Ortiz', 'Morales',
       'Herrera', 'Aguilar', 'Medina', 'Rios', 'Gimenez', 'Rojas', 'Mendoza', 'Vega', 'Cruz', 'Iglesias'
