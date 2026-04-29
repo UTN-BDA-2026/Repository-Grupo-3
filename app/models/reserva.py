@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from sqlalchemy import select, func # para el SUM en db
 
 from app.extensions import db
 
@@ -7,6 +8,12 @@ from app.extensions import db
 @dataclass
 class Reserva(db.Model):
     __tablename__ = 'reserva'
+    #indices compuestos para optimizar consultas
+    __table_args__ = (
+        db.Index('idx_reserva_fecha_id', 'fecha_id'),
+        db.Index('idx_reserva_usuario_id', 'usuario_id'),
+        db.Index('idx_reserva_estado', 'estado'),
+    )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     fecha_creacion = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -22,14 +29,18 @@ class Reserva(db.Model):
     fecha_id = db.Column(db.Integer, db.ForeignKey('fecha.id'), nullable=False, index=True)
     hora_inicio = db.Column(db.Time, nullable=True)
     hora_fin = db.Column(db.Time, nullable=True)
-
-    usuario = db.relationship('Usuario', back_populates='reservas', lazy='joined')
-    fecha = db.relationship('Fecha', back_populates='reserva', lazy='joined')
-
-    pagos = db.relationship('Pago', back_populates='reserva', lazy='joined')
-
+    
+    
+    usuario = db.relationship('Usuario', back_populates='reservas', lazy='select')
+    fecha   = db.relationship('Fecha',   back_populates='reserva',  lazy='select')
+    
+    pagos   = db.relationship('Pago',    back_populates='reserva',  lazy='select')
 
     @property
-    def saldo_restante(self):
-        total_pagado = sum(pago.monto for pago in self.pagos)
+    def saldo_restante(self):    #ahora hago un solo SELECT SUM 
+        from app.models.pago import Pago
+        total_pagado = db.session.execute(
+            select(func.coalesce(func.sum(Pago.monto), 0))
+            .where(Pago.reserva_id == self.id)
+        ).scalar()
         return (self.valor_alquiler or 0) - total_pagado

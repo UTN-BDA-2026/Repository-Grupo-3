@@ -7,6 +7,9 @@ from app.extensions import db
 @dataclass
 class Pago(db.Model):
     __tablename__ = 'pago'
+    __table_args__ = (
+        db.Index('idx_pago_reserva_id', 'reserva_id'), 
+    )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     monto = db.Column(db.Float, nullable=False)
@@ -14,4 +17,4 @@ class Pago(db.Model):
     
     # Relación con Reserva
     reserva_id = db.Column(db.Integer, db.ForeignKey('reserva.id'), nullable=False)
-    reserva = db.relationship('Reserva', back_populates='pagos')
+    reserva = db.relationship('Reserva', back_populates='pagos', lazy='select')
