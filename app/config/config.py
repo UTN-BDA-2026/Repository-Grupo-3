@@ -53,6 +53,7 @@ class DevelopmentConfig(Config):
     CACHE_REDIS_DB = os.getenv('REDIS_DB')
     CACHE_REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
     CACHE_TYPE = "RedisCache"
+    CACHE_DEFAULT_TIMEOUT = 30  
     @staticmethod
     def init_app(app):
         """Valida las variables de entorno críticas para desarrollo."""
@@ -68,6 +69,12 @@ class TestingConfig(Config):
 
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.getenv("PROD_DATABASE_URI")
+    CACHE_TYPE = "RedisCache"
+    CACHE_REDIS_HOST = os.getenv('REDIS_HOST')
+    CACHE_REDIS_PORT = os.getenv('REDIS_PORT')
+    CACHE_REDIS_DB = os.getenv('REDIS_DB')
+    CACHE_REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
+    CACHE_DEFAULT_TIMEOUT = 30
 
     @staticmethod
     def init_app(app):

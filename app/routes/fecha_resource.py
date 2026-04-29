@@ -6,7 +6,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import ValidationError
 
 from app.config.response_builder import ResponseBuilder
-from app.extensions import db, limiter
+from app.extensions import db, limiter, cache
 from app.mapping import FechaSchema, ResponseSchema
 from app.services import FechaService
 from app.utils.decorators import admin_required
@@ -15,6 +15,8 @@ Fecha = Blueprint('Fecha', __name__)
 
 @Fecha.route('/fecha', methods=['GET'])
 @limiter.limit("100 per minute") 
+@cache.cached(timeout=30, key_prefix='fechas_all')
+
 def all():
     # Instanciación interna para evitar errores de contexto
     service = FechaService()
@@ -32,6 +34,7 @@ def all():
 
 @Fecha.route('/fecha/<int:id>', methods=['GET'])
 @limiter.limit("100 per minute")
+
 def one(id):
     service = FechaService()
     fecha_schema = FechaSchema()
@@ -55,6 +58,7 @@ def one(id):
 @limiter.limit("50 per minute")
 @admin_required()
 @jwt_required()
+
 def add():
     service = FechaService()
     fecha_schema = FechaSchema()
@@ -67,6 +71,7 @@ def add():
 
         fecha = fecha_schema.load(json_data)
         data = fecha_schema.dump(service.add(fecha))
+        cache.delete('fechas_all') #invalida el cache al crear la fecha
         response_builder.add_message("Fecha creada con éxito").add_status_code(201).add_data(data)
         return response_builder.build(), 201
     except ValidationError as err:
@@ -82,6 +87,7 @@ def add():
 @limiter.limit("50 per minute")
 @admin_required()
 @jwt_required()
+
 def update(id):
     service = FechaService()
     fecha_schema = FechaSchema()
@@ -110,6 +116,7 @@ def update(id):
         )
         
         data = fecha_schema.dump(updated_fecha)
+        cache.delete('fechas_all') #invalida el cache al actualizar la fecha
         response_builder.add_message("Fecha actualizada con éxito").add_status_code(200).add_data(data)
         return response_builder.build(), 200
         
@@ -126,12 +133,14 @@ def update(id):
 @limiter.limit("10 per minute")
 @admin_required()
 @jwt_required()
+
 def delete(id):
     service = FechaService()
     response_builder = ResponseBuilder()
     
     try:
         if service.delete(id):
+            cache.delete('fechas_all') #invalida el cache al eliminar la fecha
             response_builder.add_message("Fecha eliminada").add_status_code(200).add_data({'id': id})
             return response_builder.build(), 200
         else:
