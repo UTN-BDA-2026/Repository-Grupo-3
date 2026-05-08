@@ -15,7 +15,33 @@ from app.utils.decorators import admin_required
 from app.utils.storage import upload_file_to_r2
 
 Reserva = Blueprint('Reserva', __name__)
-
+def _enviar_contrato_confirmacion(reserva_obj):
+    """
+    Función de ayuda para generar el HTML del contrato y enviarlo 
+    a través del NotificationService.
+    """
+    notification_service = NotificationService()
+    try:
+        template_data = {
+            "user_name": f"{reserva_obj.usuario.nombre} {reserva_obj.usuario.apellido}",
+            "user_dni": reserva_obj.usuario.dni,
+            "event_date": reserva_obj.fecha.dia.strftime('%d/%m/%Y'),
+            "acceptance_date": reserva_obj.fecha_aceptacion.strftime('%d/%m/%Y a las %H:%M:%S UTC'),
+            "acceptance_ip": reserva_obj.ip_aceptacion,
+            "cantidad_personas": reserva_obj.cantidad_personas,
+            "hora_inicio": reserva_obj.hora_inicio.strftime('%H:%M') if reserva_obj.hora_inicio else None,
+            "hora_fin": reserva_obj.hora_fin.strftime('%H:%M') if reserva_obj.hora_fin else None
+        }
+        html_contrato = render_template('contrato.html', **template_data)
+        
+        notification_service.send_email_confirmation(
+            to_email=reserva_obj.usuario.correo,
+            user_name=reserva_obj.usuario.nombre,
+            event_date=template_data['event_date'],
+            html_contract=html_contrato
+        )
+    except Exception as mail_err:
+        sentry_sdk.capture_exception(mail_err)  
 @Reserva.route('/reserva', methods=['GET'])
 @limiter.limit("100 per minute") # Límite aumentado para el panel admin
 def all():
@@ -143,20 +169,26 @@ def create_for_admin():
         reserva.ip_aceptacion = request.remote_addr
         reserva.fecha_aceptacion = datetime.utcnow()
 
-        data = reserva_schema.dump(service.add(reserva))
+        # Guardamos en la base de datos y atrapamos el objeto creado
+        reserva_creada = service.add(reserva)
+
+        # Disparamos el contrato si el administrador la creó como 'confirmada'
+        if reserva_creada.estado == 'confirmada':
+            _enviar_contrato_confirmacion(reserva_creada)
+
+        data = reserva_schema.dump(reserva_creada)
         response_builder.add_message("Reserva creada por admin").add_status_code(201).add_data(data)
         return response_builder.build(), 201
     except Exception as e:
         db.session.rollback()
         return response_builder.add_message(f"Error en creación admin: {str(e)}").add_status_code(500).build(), 500
-
+    
 @Reserva.route('/reserva/<int:id>', methods=['PUT'])
 @limiter.limit("50 per minute")
 @jwt_required()
 @admin_required()
 def update(id):
     service = ReservaService()
-    notification_service = NotificationService()
     reserva_schema = ReservaSchema()
     response_builder = ResponseBuilder()
     
@@ -174,27 +206,9 @@ def update(id):
 
         updated_reserva = service.update(id, json_data)
         
+        # Disparamos el contrato si el estado cambió a 'confirmada'
         if nuevo_estado == 'confirmada' and estado_anterior != 'confirmada':
-            try:
-                template_data = {
-                    "user_name": f"{updated_reserva.usuario.nombre} {updated_reserva.usuario.apellido}",
-                    "user_dni": updated_reserva.usuario.dni,
-                    "event_date": updated_reserva.fecha.dia.strftime('%d/%m/%Y'),
-                    "acceptance_date": updated_reserva.fecha_aceptacion.strftime('%d/%m/%Y a las %H:%M:%S UTC'),
-                    "acceptance_ip": updated_reserva.ip_aceptacion,
-                    "cantidad_personas": updated_reserva.cantidad_personas,
-                    "hora_inicio": updated_reserva.hora_inicio.strftime('%H:%M') if updated_reserva.hora_inicio else None,
-                    "hora_fin": updated_reserva.hora_fin.strftime('%H:%M') if updated_reserva.hora_fin else None
-                }
-                html_contrato = render_template('contrato.html', **template_data)
-                notification_service.send_email_confirmation(
-                    to_email=updated_reserva.usuario.correo,
-                    user_name=updated_reserva.usuario.nombre,
-                    event_date=template_data['event_date'],
-                    html_contract=html_contrato
-                )
-            except Exception as mail_err:
-                sentry_sdk.capture_exception(mail_err)
+            _enviar_contrato_confirmacion(updated_reserva)
         
         data = reserva_schema.dump(updated_reserva)
         response_builder.add_message("Reserva actualizada").add_status_code(200).add_data(data)
@@ -203,7 +217,7 @@ def update(id):
     except Exception as e:
         db.session.rollback()
         return response_builder.add_message(f"Error al actualizar: {str(e)}").add_status_code(500).build(), 500
-
+    
 @Reserva.route('/reserva/<int:id>', methods=['DELETE'])
 @limiter.limit("20 per minute")
 @jwt_required()
