@@ -7,7 +7,6 @@ from app.services.push_notification_service import PushNotificationService
 def check_pending_reservations():
     """
     Busca reservas pendientes y envía una notificación si encuentra alguna.
-    IMPORTANTE: Esta función ahora asume que se ejecuta dentro de un contexto de aplicación.
     """
     pending_reservas = Reserva.query.filter_by(estado='pendiente').count()
     
@@ -20,7 +19,6 @@ def check_pending_reservations():
 def check_upcoming_reservations():
     """
     Busca reservas confirmadas para los próximos días y envía un recordatorio.
-    IMPORTANTE: Esta función ahora asume que se ejecuta dentro de un contexto de aplicación.
     """
     today = datetime.utcnow().date()
     

@@ -1,15 +1,19 @@
 from flask import Blueprint, request
 from marshmallow import ValidationError
+from flask_jwt_extended import jwt_required
 
 from app.config.response_builder import ResponseBuilder
 from app.extensions import limiter
 from app.mapping import PersonaSchema, ResponseSchema
 from app.services import PersonaService
+from app.utils.decorators import admin_required
 
 Persona = Blueprint('Persona', __name__)
 
 @Persona.route('/persona', methods=['GET'])
 @limiter.limit("50 per minute")
+@jwt_required()
+@admin_required()
 def all():
     # Instanciación interna para evitar RuntimeError fuera del contexto
     service = PersonaService()
@@ -25,8 +29,10 @@ def all():
         response_builder.add_message("Error fetching Persona").add_status_code(500).add_data(str(e))
         return response_schema.dump(response_builder.build()), 500
 
+
 @Persona.route('/persona/<int:id>', methods=['GET'])
 @limiter.limit("50 per minute")
+@jwt_required()
 def one(id):
     service = PersonaService()
     persona_schema = PersonaSchema()
@@ -46,8 +52,10 @@ def one(id):
         response_builder.add_message("Error fetching Persona").add_status_code(500).add_data(str(e))
         return response_schema.dump(response_builder.build()), 500
 
+
 @Persona.route('/persona', methods=['POST'])
 @limiter.limit("50 per minute")
+# Pública: No lleva jwt_required para que los usuarios puedan registrarse
 def add():
     service = PersonaService()
     persona_schema = PersonaSchema()
@@ -70,8 +78,10 @@ def add():
         response_builder.add_message("Error creating Persona").add_status_code(500).add_data(str(e))
         return response_schema.dump(response_builder.build()), 500
 
+
 @Persona.route('/persona/<int:id>', methods=['PUT'])
 @limiter.limit("50 per minute")
+@jwt_required()
 def update(id):
     service = PersonaService()
     persona_schema = PersonaSchema()
@@ -99,8 +109,11 @@ def update(id):
         response_builder.add_message("Error updating Persona").add_status_code(500).add_data(str(e))
         return response_schema.dump(response_builder.build()), 500
 
+
 @Persona.route('/persona/<int:id>', methods=['DELETE'])
 @limiter.limit("50 per minute")
+@jwt_required()
+@admin_required()
 def delete(id):
     service = PersonaService()
     response_schema = ResponseSchema()
