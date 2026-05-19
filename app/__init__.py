@@ -85,6 +85,7 @@ def create_app(config_name=None):
     from app.routes.analytics_resource import Analytics
     from app.routes.auth_resource import Auth
     from app.routes.chatbot_resource import ChatbotBP
+    from app.routes.log_resource import LogBP
     from app.routes.config_resource import Config
     from app.routes.fecha_resource import Fecha
     from app.routes.gasto_resource import GastoBP
@@ -105,6 +106,7 @@ def create_app(config_name=None):
     app.register_blueprint(TestNotifications, url_prefix='/api/v1')
     app.register_blueprint(GastoBP, url_prefix='/api/v1')
     app.register_blueprint(ChatbotBP, url_prefix='/api/v1')
+    app.register_blueprint(LogBP, url_prefix='/api/v1')
     
     @app.teardown_appcontext
     def shutdown_session(exception=None):
