@@ -5,5 +5,3 @@ from .pago import Pago
 from .persona import Persona
 from .reserva import Reserva
 from .usuario import Usuario
-from .log import Log
-
