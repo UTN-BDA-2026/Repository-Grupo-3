@@ -9,13 +9,10 @@ from .repository import (Repository_add, Repository_delete, Repository_get,
 
 class AdministradorRepository(Repository_add, Repository_get, Repository_delete):
     def add(self, entity: Administrador) -> Administrador:
-        try:
-            db.session.add(entity)
-            db.session.commit()
-            return entity
-        except Exception as e:
-            db.session.rollback()  # Deshace la transacción si hay un error
-            raise e  # Propaga la excepción para manejo externo
+        # Añadimos la entidad a la sesión.
+        # El decorador @transactional del servicio hará el commit()
+        db.session.add(entity)
+        return entity
 
     def get_all(self) -> List[Administrador]:
         return Administrador.query.all()
@@ -24,13 +21,10 @@ class AdministradorRepository(Repository_add, Repository_get, Repository_delete)
         return Administrador.query.get(id)
 
     def delete(self, id: int) -> bool:
-        try:
-            Administrador = self.get_by_id(id)
-            if Administrador:
-                db.session.delete(Administrador)  
-                db.session.commit()  
-                return True
-            return False
-        except Exception as e:
-            db.session.rollback()  # Deshace la transacción si hay un error
-            raise e  # Propaga la excepción para manejo externo
+        # Corregido: 'administrador' en minúscula para no pisar la clase del Modelo
+        administrador = self.get_by_id(id)
+        if administrador:
+            # Marcamos para eliminar en esta sesión
+            db.session.delete(administrador)  
+            return True
+        return False

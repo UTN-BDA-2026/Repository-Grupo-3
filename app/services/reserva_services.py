@@ -6,7 +6,7 @@ from app.models import Fecha, Reserva
 from app.repositories import ReservaRepository
 from app.services.fecha_services import FechaService
 from app.services.push_notification_service import PushNotificationService
-
+from app.utils.decorators import transactional
 
 class ReservaService:
     """
@@ -47,55 +47,56 @@ class ReservaService:
             return reservas
         return cached_reservas
 
+
+    @transactional
     def add(self, reserva: Reserva) -> Reserva:
+        # 1. Bloqueo Distribuido (Redis): Evita que múltiples hilos saturen la BD
         with self.fecha_service.redis_lock(reserva.fecha_id):
+            
+            # 2. Bloqueo Pesimista (PostgreSQL): Asegura la fila a nivel de motor ACID
             fecha_a_reservar = self.fecha_service.find(reserva.fecha_id)
 
             if not fecha_a_reservar:
                 raise Exception(f"La fecha con ID {reserva.fecha_id} no existe.")
 
             if fecha_a_reservar.estado != 'disponible':
-                raise Exception(f"La fecha seleccionada ya no está disponible.")
+                raise Exception("La fecha seleccionada ya no está disponible.")
 
+            if reserva.estado == 'confirmada':
+                fecha_a_reservar.estado = 'reservada'
+            else:
+                fecha_a_reservar.estado = 'pendiente'
+            
+            db.session.add(reserva)
+            
+            # NUEVO: Generamos el ID en la BD sin cerrar la transacción
+            db.session.flush()
+            
+            # --- INICIO DE NOTIFICACIÓN TELEGRAM ---
             try:
-    
-                fecha_a_reservar = db.session.merge(fecha_a_reservar)
+                u = reserva.usuario
+                nombre_cliente = f"{u.nombre} {u.apellido}" if u else "Nuevo Cliente"
                 
-                if reserva.estado == 'confirmada':
-                    fecha_a_reservar.estado = 'reservada'
-                else:
-                    fecha_a_reservar.estado = 'pendiente'
-                
-               
-                db.session.add(reserva)
-                db.session.commit()
-
-                # --- INICIO DE NOTIFICACIÓN TELEGRAM ---
-                try:
-                    u = reserva.usuario
-                    nombre_cliente = f"{u.nombre} {u.apellido}" if u else "Nuevo Cliente"
-                    
-                    telegram = PushNotificationService()
-                    mensaje_alerta = (
-                        f"👤 *Cliente:* {nombre_cliente}\n"
-                        f"📅 *Fecha:* {fecha_a_reservar.dia}\n"
-                        f"📋 *Estado:* {reserva.estado.capitalize()}"
-                    )
-                    telegram.send_notification(mensaje_alerta, title="🆕 ¡Nueva Solicitud de Reserva!")
-                except Exception as e:
-                    print(f"Error al enviar notificación push: {e}")
-                # --- FIN DE NOTIFICACIÓN ---
-
-                cache.clear() 
-                cache.set(f'reserva_{reserva.id}', reserva, timeout=self.CACHE_TIMEOUT)
-                cache.set(f'fecha_{fecha_a_reservar.id}', fecha_a_reservar, timeout=self.CACHE_TIMEOUT)
-
-                return reserva
-
+                telegram = PushNotificationService()
+                mensaje_alerta = (
+                    f"👤 *Cliente:* {nombre_cliente}\n"
+                    f"📅 *Fecha:* {fecha_a_reservar.dia}\n"
+                    f"📋 *Estado:* {reserva.estado.capitalize()}"
+                )
+                telegram.send_notification(mensaje_alerta, title="🆕 ¡Nueva Solicitud de Reserva!")
             except Exception as e:
-                db.session.rollback()
-                raise e
+                # Si falla Telegram, no queremos que se cancele la reserva
+                print(f"Error al enviar notificación push: {e}")
+            # --- FIN DE NOTIFICACIÓN ---
 
+            # 4. Limpieza y actualización de caché
+            cache.clear() 
+            # Ahora reserva.id sí tiene el número autoincremental de PostgreSQL
+            cache.set(f'reserva_{reserva.id}', reserva, timeout=self.CACHE_TIMEOUT)
+            cache.set(f'fecha_{fecha_a_reservar.id}', fecha_a_reservar, timeout=self.CACHE_TIMEOUT)
+
+            return reserva    
+    @transactional
     def update(self, reserva_id: int, updated_data: dict) -> Reserva:
         with self.redis_lock(reserva_id):
             reserva_a_actualizar = self.repository.get_by_id(reserva_id)
@@ -117,36 +118,30 @@ class ReservaService:
                 reserva_a_actualizar.fecha.estado = 'disponible'
             elif nuevo_estado == 'pendiente' and estado_anterior != 'pendiente':
                 reserva_a_actualizar.fecha.estado = 'pendiente'
-
-            db.session.commit()
-            
+                
             reserva_fresca = self.repository.get_by_id(reserva_id)
             cache.clear() 
 
             return reserva_fresca
 
+    @transactional
     def delete(self, reserva_id: int) -> bool:
         with self.redis_lock(reserva_id):
             reserva_a_archivar = self.repository.get_by_id(reserva_id)
 
             if not reserva_a_archivar:
                 return False
+            
+            reserva_a_archivar.estado = 'archivada'
 
-            try:
-                reserva_a_archivar.estado = 'archivada'
+            fecha_asociada = reserva_a_archivar.fecha
+            if fecha_asociada:
+                fecha_asociada.estado = 'disponible'
 
-                fecha_asociada = reserva_a_archivar.fecha
-                if fecha_asociada:
-                    fecha_asociada.estado = 'disponible'
+            # El decorador @transactional hará el commit() al finalizar la función
+            cache.clear() 
 
-                db.session.commit()
-                cache.clear() 
-
-                return True
-
-            except Exception as e:
-                db.session.rollback()
-                raise e
+            return True
     def get_all_archived(self) -> list[Reserva]:
         """
         Obtiene la lista de todas las reservas archivadas, con caché.

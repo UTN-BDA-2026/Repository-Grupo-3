@@ -5,7 +5,7 @@ from datetime import date
 from app.extensions import cache, db, redis_client
 from app.models import Fecha
 from app.repositories import FechaRepository
-
+from app.utils.decorators import transactional
 
 class FechaService:
     """
@@ -45,12 +45,15 @@ class FechaService:
             return fechas
         return cached_fechas
 
+    @transactional
     def add(self, fecha: Fecha) -> Fecha:
         """
-        Agrega una nueva fecha, asegura el commit y actualiza la caché.
+        Agrega una nueva fecha, asegura la transacción y actualiza la caché.
         """
         new_fecha = self.repository.add(fecha)
-        db.session.commit()
+        
+        # Generamos el ID en la base de datos manteniendo la transacción abierta
+        db.session.flush()
         
         fecha_fresca = self.repository.get_by_id(new_fecha.id)
         
@@ -62,8 +65,9 @@ class FechaService:
         cache.delete('fechas_disponibles')
         cache.delete('todas_las_fechas')
         
+        # El decorador @transactional ejecutará el commit() final justo aquí
         return fecha_fresca
-
+    @transactional
     def update(self, fecha_id: int, updated_data: dict) -> Fecha:
         """
         Actualiza una fecha obteniéndola directamente del repositorio para 
@@ -88,7 +92,7 @@ class FechaService:
                 existing_fecha.estado = updated_data['estado']
 
             db.session.add(existing_fecha)
-            db.session.commit()
+            # NOTA: Eliminamos db.session.commit(). El decorador @transactional lo hará al final.
 
             fecha_fresca = self.repository.get_by_id(fecha_id)
 
@@ -102,7 +106,7 @@ class FechaService:
             cache.delete('todas_las_fechas')
 
             return fecha_fresca
-
+    @transactional
     def delete(self, fecha_id: int) -> bool:
         """
         Elimina una fecha y limpia las referencias en caché.
@@ -110,7 +114,7 @@ class FechaService:
         with self.redis_lock(fecha_id):
             deleted = self.repository.delete(fecha_id)
             if deleted:
-                db.session.commit()
+                # NOTA: Eliminamos db.session.commit(). El decorador @transactional lo hará al final.
                 cache.delete(f'fecha_{fecha_id}')
                 
                 # Limpieza profunda
@@ -118,7 +122,6 @@ class FechaService:
                 cache.delete('fechas_disponibles')
                 cache.delete('todas_las_fechas')
             return deleted
-
     def find(self, fecha_id: int) -> Fecha:
         """
         Busca una fecha por ID priorizando la caché.

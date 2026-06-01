@@ -11,13 +11,11 @@ from .repository import (Repository_add, Repository_delete, Repository_get,
 
 class ReservaRepository(Repository_add, Repository_get, Repository_delete):
     def add(self, entity: Reserva) -> Reserva:
-        try:
-            db.session.add(entity)  
-            db.session.commit()  
-            return entity
-        except Exception as e:
-            db.session.rollback()
-            raise e
+        # El repositorio solo añade la entidad a la sesión.
+        # El decorador @transactional del servicio hará el commit() o rollback().
+        db.session.add(entity)  
+        return entity
+
     def get_all_archived(self) -> List[Reserva]:
         """
         Obtiene todas las reservas que han sido marcadas como 'archivada'.
@@ -34,16 +32,12 @@ class ReservaRepository(Repository_add, Repository_get, Repository_delete):
         ).filter_by(id=id).first()
 
     def delete(self, id: int) -> bool:
-        try:
-            reserva = self.get_by_id(id)
-            if reserva:
-                db.session.delete(reserva)  
-                db.session.commit()  
-                return True
-            return False
-        except Exception as e:
-            db.session.rollback()
-            raise e
+        # Buscamos la reserva y, si existe, la marcamos para borrar en esta sesión.
+        reserva = self.get_by_id(id)
+        if reserva:
+            db.session.delete(reserva)  
+            return True
+        return False
 
     def get_all(self) -> List[Reserva]:
         # Le decimos a la consulta que cargue las relaciones 'usuario' y 'fecha'

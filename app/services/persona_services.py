@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from app.extensions import cache, db, redis_client
 from app.models import Persona
 from app.repositories import PersonaRepository
+from app.utils.decorators import transactional
 
 
 class PersonaService:
@@ -44,16 +45,22 @@ class PersonaService:
             return personas
         return cached_personas
 
+    @transactional
     def add(self, persona: Persona) -> Persona:
         """
         Agrega una nueva persona y actualiza la caché.
         """
         new_persona = self.repository.add(persona)
+        
+        # Generamos el ID en PostgreSQL manteniendo la transacción abierta
+        db.session.flush()
+        
         cache.set(f'persona_{new_persona.id}', new_persona, timeout=self.CACHE_TIMEOUT)
         cache.delete('personas')
+        
         return new_persona
 
-
+    @transactional
     def update(self, persona_id: int, updated_persona: Persona) -> Persona:
         """
         Actualiza una persona existente.
@@ -68,15 +75,14 @@ class PersonaService:
             existing_persona.correo = updated_persona.correo
             existing_persona.dni = updated_persona.dni
 
-            # Guardar los cambios en la base de datos
-            db.session.commit()
+            # NOTA: Eliminamos db.session.commit(). El decorador @transactional lo hará al final.
 
             # Actualizar la caché
             cache.set(f'persona_{persona_id}', existing_persona, timeout=self.CACHE_TIMEOUT)
             cache.delete('personas')
 
             return existing_persona
-
+    @transactional
     def delete(self, persona_id: int) -> bool:
         """
         Elimina una persona por su ID y actualiza la caché.
@@ -84,6 +90,7 @@ class PersonaService:
         with self.redis_lock(persona_id):
             deleted = self.repository.delete(persona_id)
             if deleted:
+                # El decorador @transactional hará el commit() en la base de datos al finalizar
                 cache.delete(f'persona_{persona_id}')
                 cache.delete('personas')
             return deleted

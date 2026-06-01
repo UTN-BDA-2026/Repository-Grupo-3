@@ -11,8 +11,9 @@ from .repository import Repository_add, Repository_delete, Repository_get
 class GastoRepository(Repository_add, Repository_get, Repository_delete):
     
     def add(self, entity: Gasto) -> Gasto:
+        # El repositorio solo añade la entidad a la sesión.
+        # El decorador @transactional del servicio hará el commit()
         db.session.add(entity)
-        db.session.commit()
         return entity
 
     def get_all(self, month=None, year=None) -> List[Gasto]:
@@ -27,14 +28,13 @@ class GastoRepository(Repository_add, Repository_get, Repository_delete):
         
         return query.order_by(Gasto.fecha.desc()).all()
 
-
     def get_by_id(self, id: int) -> Gasto:
         return Gasto.query.get(id)
 
     def delete(self, id: int) -> bool:
+        # Buscamos y marcamos para borrar si existe en esta sesión
         gasto = self.get_by_id(id)
         if gasto:
             db.session.delete(gasto)
-            db.session.commit()
             return True
         return False

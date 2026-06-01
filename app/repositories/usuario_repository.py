@@ -8,13 +8,10 @@ from .repository import Repository_add, Repository_delete, Repository_get
 
 class UsuarioRepository(Repository_add, Repository_get, Repository_delete):
     def add(self, entity: Usuario) -> Usuario:
-        try:
-            db.session.add(entity)  
-            db.session.commit()  
-            return entity
-        except Exception as e:
-            db.session.rollback()  # Deshace la transacción si hay un error
-            raise e  # Propaga la excepción para manejo externo
+        # El repositorio solo prepara la entidad en la sesión.
+        # El commit y manejo de errores se delegan a la capa superior.
+        db.session.add(entity)  
+        return entity
 
     def get_all(self):
         return Usuario.query.filter_by(activo=True).order_by(Usuario.id.desc()).limit(100).all()
@@ -23,17 +20,12 @@ class UsuarioRepository(Repository_add, Repository_get, Repository_delete):
         return Usuario.query.get(id)
 
     def delete(self, id: int) -> bool:
-        try:
-            usuario = self.get_by_id(id)
-            if usuario:
-                db.session.delete(usuario)  
-                db.session.commit()  
-                return True
-            return False
-        except Exception as e:
-            db.session.rollback()  # Deshace la transacción si hay un error
-            raise e  # Propaga la excepción para manejo externo
-    
+        # Solo buscamos y marcamos para borrar si existe.
+        usuario = self.get_by_id(id)
+        if usuario:
+            db.session.delete(usuario)  
+            return True
+        return False
     
     def search(self, term: str, limit: int = 10) -> List[Usuario]:
         """Busca usuarios separando la lógica de texto y números para evitar escaneos completos."""

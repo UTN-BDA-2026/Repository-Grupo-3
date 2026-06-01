@@ -36,5 +36,11 @@ class FechaRepository(Repository_add, Repository_get, Repository_delete):
             db.session.rollback()  # Deshace la transacción si hay un error
             raise e  # Propaga la excepción para manejo externo
     def get_by_dia(self, dia: date) -> Fecha:
-        """Busca una entidad de Fecha por su campo de día."""
-        return Fecha.query.filter_by(dia=dia).first()
+        """
+        Busca una fecha y bloquea la fila en PostgreSQL (SELECT FOR UPDATE)
+        para evitar Condiciones de Carrera (Race Conditions).
+        """
+        return db.session.query(Fecha)\
+                         .filter_by(dia=dia)\
+                         .with_for_update()\
+                         .first()

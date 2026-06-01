@@ -5,6 +5,7 @@ from app import db
 from app.extensions import cache, db, redis_client
 from app.models import Usuario
 from app.repositories import UsuarioRepository
+from app.utils.decorators import transactional
 
 
 class UsuarioService:
@@ -45,6 +46,7 @@ class UsuarioService:
             return usuarios
         return cached_usuarios
 
+    @transactional
     def add(self, usuario: Usuario) -> Usuario:
         """
         Agrega un nuevo usuario o REACTIVA uno que había sido eliminado (Soft Delete).
@@ -63,9 +65,10 @@ class UsuarioService:
                 if hasattr(usuario, 'contrasena') and usuario.contrasena:
                     usuario_existente.contrasena = usuario.contrasena 
                 
-                db.session.commit()
+                # Usamos flush() en vez de commit() para sincronizar con la DB sin cerrar la transacción
+                db.session.flush()
                 
-                # Refrescamos la entidad desde la DB para evitar problemas de caché
+                # Refrescamos la entidad desde la DB/Memoria
                 usuario_fresco = self.repository.get_by_id(usuario_existente.id)
                 if usuario_fresco:
                     cache.set(f'usuario_{usuario_fresco.id}', usuario_fresco, timeout=self.CACHE_TIMEOUT)
@@ -77,7 +80,9 @@ class UsuarioService:
 
         # 2. Si no existe, lo creamos de forma normal
         new_usuario = self.repository.add(usuario)
-        db.session.commit()
+        
+        # Flush genera el new_usuario.id en PostgreSQL pero permite hacer rollback si algo falla después
+        db.session.flush()
         
         usuario_fresco = self.repository.get_by_id(new_usuario.id)
         
@@ -85,8 +90,9 @@ class UsuarioService:
             cache.set(f'usuario_{usuario_fresco.id}', usuario_fresco, timeout=self.CACHE_TIMEOUT)
         cache.delete('usuarios')
         
+        # El decorador @transactional hará el commit() final justo después de este return
         return usuario_fresco
-
+    @transactional
     def update(self, usuario_id: int, updated_usuario: Usuario) -> Usuario:
         """
         Actualiza un usuario existente.
@@ -101,7 +107,7 @@ class UsuarioService:
             existing_usuario.dni = updated_usuario.dni
             existing_usuario.correo = updated_usuario.correo
 
-            db.session.commit()
+            # NOTA: Eliminamos db.session.commit(). El decorador @transactional lo hará al final.
         
             usuario_fresco = self.repository.get_by_id(usuario_id)
             
@@ -109,7 +115,7 @@ class UsuarioService:
             cache.delete('usuarios')
 
             return usuario_fresco
-
+    @transactional
     def delete(self, usuario_id: int) -> bool:
         """
         Realiza un Borrado Lógico (Soft Delete) apagando al usuario.
@@ -121,12 +127,13 @@ class UsuarioService:
                 return False
 
             usuario_a_eliminar.activo = False
-            db.session.commit()
+            
+            # NOTA: Eliminamos db.session.commit(). El decorador @transactional lo hará al final.
+            
             cache.delete(f'usuario_{usuario_id}')
             cache.delete('usuarios')
             
             return True
-
     def find(self, usuario_id: int) -> Usuario:
         """
         Busca un usuario por su ID, con caché.

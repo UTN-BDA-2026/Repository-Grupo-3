@@ -2,6 +2,7 @@ from app.extensions import cache, redis_client, db
 from app.models import Administrador
 from app.repositories import AdministradorRepository
 from contextlib import contextmanager
+from app.utils.decorators import transactional
 import time
 
 class AdministradorService:
@@ -42,15 +43,21 @@ class AdministradorService:
             return administradors
         return cached_administradors
 
+    @transactional
     def add(self, administrador: Administrador) -> Administrador:
         """
         Agrega un nuevo administrador y actualiza la caché.
         """
         new_administrador = self.repository.add(administrador)
+        
+        # Generamos el ID en la base de datos manteniendo la transacción abierta
+        db.session.flush()
+        
         cache.set(f'administrador_{new_administrador.id}', new_administrador, timeout=self.CACHE_TIMEOUT)
         cache.delete('administradors')
+        
         return new_administrador
-
+    @transactional
     def update(self, administrador_id: int, updated_administrador: Administrador) -> Administrador:
         """
         Actualiza un administrador existente.
@@ -68,14 +75,14 @@ class AdministradorService:
             existing_administrador.correo = updated_administrador.correo
             existing_administrador.dni = updated_administrador.dni
 
-            db.session.commit()
+            # NOTA: Eliminamos db.session.commit(). El decorador @transactional lo hará al final.
 
             # Actualizar la caché
             cache.set(f'administrador_{administrador_id}', existing_administrador, timeout=self.CACHE_TIMEOUT)
             cache.delete('administradors')  # Invalida la lista de administradores en caché
 
             return existing_administrador
-
+    @transactional
     def delete(self, administrador_id: int) -> bool:
         """
         Elimina un administrador por su ID y actualiza la caché.
@@ -85,8 +92,8 @@ class AdministradorService:
             if deleted:
                 cache.delete(f'administrador_{administrador_id}')
                 cache.delete('administradors')
+            # El decorador @transactional hará el commit() en PostgreSQL aquí mismo
             return deleted
-
     def find(self, administrador_id: int) -> Administrador:
         """
         Busca un administrador por su ID, con caché.

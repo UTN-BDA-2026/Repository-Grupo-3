@@ -1,5 +1,3 @@
-# Contenido para app/extensions.py
-
 import os
 
 import redis
