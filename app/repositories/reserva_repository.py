@@ -22,13 +22,15 @@ class ReservaRepository(Repository_add, Repository_get, Repository_delete):
         """
         return Reserva.query.options(
             joinedload(Reserva.usuario),
-            joinedload(Reserva.fecha)
+            joinedload(Reserva.fecha),
+            joinedload(Reserva.pagos) 
         ).filter(Reserva.estado == 'archivada').all()
 
     def get_by_id(self, id: int) -> Reserva:
         return Reserva.query.options(
             joinedload(Reserva.usuario),
-            joinedload(Reserva.fecha)
+            joinedload(Reserva.fecha),
+            joinedload(Reserva.pagos) 
         ).filter_by(id=id).first()
 
     def delete(self, id: int) -> bool:
@@ -40,18 +42,20 @@ class ReservaRepository(Repository_add, Repository_get, Repository_delete):
         return False
 
     def get_all(self) -> List[Reserva]:
-        # Le decimos a la consulta que cargue las relaciones 'usuario' y 'fecha'
+        # Le decimos a la consulta que cargue las relaciones 'usuario', 'fecha' y 'pagos'
         # y que excluya las reservas archivadas.
         return Reserva.query.options(
             joinedload(Reserva.usuario),
-            joinedload(Reserva.fecha)
+            joinedload(Reserva.fecha),
+            joinedload(Reserva.pagos) 
         ).filter(Reserva.estado != 'archivada').all() 
 
     def get_by_user_id(self, user_id: int) -> List[Reserva]:
         # También excluimos las reservas archivadas de la vista del usuario.
         return Reserva.query.options(
             joinedload(Reserva.usuario),
-            joinedload(Reserva.fecha)
+            joinedload(Reserva.fecha),
+            joinedload(Reserva.pagos)
         ).filter_by(usuario_id=user_id).filter(Reserva.estado != 'archivada').all() 
         
     def search(self, term: str, limit: int = 15) -> List[Reserva]:
@@ -61,7 +65,8 @@ class ReservaRepository(Repository_add, Repository_get, Repository_delete):
         # Hacemos un JOIN con Usuario para poder buscar en sus columnas
         return Reserva.query.join(Reserva.usuario).options(
             joinedload(Reserva.usuario),
-            joinedload(Reserva.fecha)
+            joinedload(Reserva.fecha),
+            joinedload(Reserva.pagos) 
         ).filter(
             Reserva.estado != 'archivada', # Omitimos las archivadas en la búsqueda rápida
             db.or_(
