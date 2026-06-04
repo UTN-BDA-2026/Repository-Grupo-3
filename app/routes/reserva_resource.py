@@ -123,7 +123,7 @@ def request_by_user():
         reserva_data = {
             'fecha_id': int(fecha_id),
             'usuario_id': user_id,
-            'comprobante_url': None, 
+            'comprobante_url': 'procesando_comprobante', 
             'estado': 'pendiente',
             'cantidad_personas': request.form.get('cantidad_personas', 40),
             'hora_inicio': request.form.get('hora_inicio'), 
