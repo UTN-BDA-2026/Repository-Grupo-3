@@ -42,6 +42,8 @@ def _enviar_contrato_confirmacion(reserva_obj):
         )
     except Exception as mail_err:
         sentry_sdk.capture_exception(mail_err)  
+
+
 @Reserva.route('/reserva', methods=['GET'])
 @limiter.limit("100 per minute") # Límite aumentado para el panel admin
 def all():
@@ -58,6 +60,8 @@ def all():
         db.session.rollback()
         sentry_sdk.capture_exception(e)
         return response_builder.add_message(f"Error al obtener reservas: {str(e)}").add_status_code(500).build(), 500
+
+
 
 @Reserva.route('/reserva/<int:id>', methods=['GET'])
 @limiter.limit("100 per minute")
@@ -79,10 +83,16 @@ def one(id):
         db.session.rollback()
         return response_builder.add_message(f"Error: {str(e)}").add_status_code(500).build(), 500
 
+
+
 @Reserva.route('/reserva/solicitar', methods=['POST'])
 @limiter.limit("20 per minute")
 @jwt_required()
 def request_by_user():
+    from app import scheduler
+    from app.tasks import procesar_comprobante_y_notificar
+    from flask import current_app
+    
     service = ReservaService()
     reserva_schema = ReservaSchema()
     response_builder = ResponseBuilder()
@@ -104,33 +114,42 @@ def request_by_user():
         if archivo.filename == '':
             return response_builder.add_message("Archivo sin nombre").add_status_code(400).build(), 400
 
-        # 3. MÁGIA EN LA NUBE: Subimos a Cloudflare R2
-        # Le pasamos una carpeta dinámica para tenerlo súper ordenado en el bucket
-        archivo_url = upload_file_to_r2(archivo, folder=f"comprobantes/fecha_{fecha_id}")
-
-        # Si falló la conexión con Cloudflare, frenamos el proceso
-        if not archivo_url:
-            return response_builder.add_message("Error del servidor al asegurar el comprobante").add_status_code(500).build(), 500
-
-        # 4. Preparar el objeto para la base de datos
+        #1: Leer en RAM antes de perder el contexto
+        archivo_bytes = archivo.read()
+        filename = secure_filename(archivo.filename)
+        content_type = archivo.content_type
+        
+        #2: Guardar en la bd sin URL 
         reserva_data = {
             'fecha_id': int(fecha_id),
             'usuario_id': user_id,
-            'comprobante_url': archivo_url, # ¡Ahora guardamos la URL pública (https://...) directamente!
+            'comprobante_url': None, 
             'estado': 'pendiente',
             'cantidad_personas': request.form.get('cantidad_personas', 40),
             'hora_inicio': request.form.get('hora_inicio'), 
             'hora_fin': request.form.get('hora_fin')
         }
         
+        
         reserva = reserva_schema.load(reserva_data)
         reserva.ip_aceptacion = request.remote_addr
         reserva.fecha_aceptacion = datetime.utcnow()
 
-        # 5. Guardar en DB mediante el servicio
-        data = reserva_schema.dump(service.add(reserva))
+        # Guardar en DB mediante el servicio
+        reserva_creada = service.add(reserva)
+        reserva_id = reserva_creada.id
         
-        response_builder.add_message("Reserva solicitada con éxito").add_status_code(201).add_data(data)
+        #3: Delego todo el trabajo pesado al scheduler
+        app_context = current_app._get_current_object()
+        scheduler.add_job(
+            func=procesar_comprobante_y_notificar,
+            args=[app_context, reserva_id, archivo_bytes, filename, content_type, int(fecha_id)],
+            id=f'comprobante_{reserva_id}',
+            replace_existing=True
+        )
+        
+        data = reserva_schema.dump(reserva_creada)
+        response_builder.add_message("Reserva solicitada con éxito. El comprobante se está procesando.").add_status_code(201).add_data(data)
         return response_builder.build(), 201
         
     except ValidationError as err:
