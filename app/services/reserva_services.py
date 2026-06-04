@@ -72,24 +72,7 @@ class ReservaService:
             # NUEVO: Generamos el ID en la BD sin cerrar la transacción
             db.session.flush()
             
-            # --- INICIO DE NOTIFICACIÓN TELEGRAM ---
-            try:
-                u = reserva.usuario
-                nombre_cliente = f"{u.nombre} {u.apellido}" if u else "Nuevo Cliente"
-                
-                telegram = PushNotificationService()
-                mensaje_alerta = (
-                    f"👤 *Cliente:* {nombre_cliente}\n"
-                    f"📅 *Fecha:* {fecha_a_reservar.dia}\n"
-                    f"📋 *Estado:* {reserva.estado.capitalize()}"
-                )
-                telegram.send_notification(mensaje_alerta, title="🆕 ¡Nueva Solicitud de Reserva!")
-            except Exception as e:
-                # Si falla Telegram, no queremos que se cancele la reserva
-                print(f"Error al enviar notificación push: {e}")
-            # --- FIN DE NOTIFICACIÓN ---
-
-            # 4. Limpieza y actualización de caché
+            # 3. Limpieza y actualización de caché
             cache.clear() 
             # Ahora reserva.id sí tiene el número autoincremental de PostgreSQL
             cache.set(f'reserva_{reserva.id}', reserva, timeout=self.CACHE_TIMEOUT)
