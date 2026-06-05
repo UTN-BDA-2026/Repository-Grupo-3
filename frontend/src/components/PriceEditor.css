@@ -1,0 +1,405 @@
+/* --- CONTENEDOR PRINCIPAL --- */
+.price-editor-container {
+  padding: 2rem;
+  background-color: #ffffff64;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-top: 1rem;
+}
+
+/* --- CABECERA Y SELECTOR DE MODO (TABS) --- */
+.price-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #c6a4a4;
+  padding-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.price-editor-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-weight: 700;
+  font-size: 1.4rem;
+}
+
+.mode-selector {
+  display: flex;
+  background: #f4f6f8;
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.mode-selector button {
+  padding: 8px 18px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #909399;
+  transition: all 0.25s ease;
+  font-size: 0.9rem;
+}
+
+.mode-selector button.active {
+  background: #fff;
+  color: #3498db;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* --- VISTA DE CALENDARIO --- */
+.calendar-view {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.calendar-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.calendar-controls h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #2c3e50;
+  min-width: 200px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.calendar-controls button {
+  background: #f4f6f8;
+  border: 1px solid #e4e7ed;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.calendar-controls button:hover {
+  background: #3498db;
+  color: white;
+  border-color: #3498db;
+}
+
+/* --- CUADRÍCULA DEL CALENDARIO --- */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  padding: 12px;
+  background-color: #edf1f5;
+  border-radius: 12px;
+  border: 1px solid #edf2f7;
+}
+
+.calendar-day-label {
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: #a0aec0;
+  padding: 10px 0;
+  text-transform: uppercase;
+}
+
+.calendar-cell {
+  background: white;
+  min-height: 100px;
+  border-radius: 10px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.calendar-cell:hover {
+  border-color: #3498db;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+  transform: translateY(-2px);
+}
+
+.calendar-cell.blank {
+  background: transparent;
+  border: none;
+  cursor: default;
+}
+
+/* Resaltado del día de hoy */
+.calendar-cell.today {
+  border: 2px solid #3498db;
+  background-color: #f0f7ff;
+}
+
+.day-number {
+  font-weight: 700;
+  color: #4a5568;
+  font-size: 1rem;
+}
+
+/* --- ETIQUETAS DE PRECIO DENTRO DE LA CELDA --- */
+.price-tag {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #27ae60;
+  background: #eafaf1;
+  padding: 4px 6px;
+  border-radius: 6px;
+  text-align: center;
+  align-self: stretch;
+  border: 1px solid #c2f0d1;
+}
+
+.price-missing {
+  font-size: 0.7rem;
+  color: #a0aec0;
+  font-style: italic;
+  text-align: center;
+  background: #f1f3f5;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+/* --- SECCIÓN DE EDICIÓN MANUAL E INDIVIDUAL --- */
+.manual-edit-section {
+  background: #f8fafc;
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  animation: slideIn 0.3s ease-out;
+}
+
+.manual-edit-section h4 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: #2c3e50;
+}
+
+/* --- FORMULARIOS (COMÚN) --- */
+.price-editor-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 200px;
+}
+
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+  font-size: 0.85rem;
+  color: #606266;
+}
+
+.form-group input, 
+.form-group select {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #dcdfe6;
+  font-size: 0.95rem;
+  background-color: #fcfcfc;
+  transition: all 0.2s;
+}
+
+.form-group input:focus {
+  border-color: #3498db;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* --- BOTONES DE ACCIÓN --- */
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.btn-save {
+  padding: 11px 24px;
+  background-color: #27ae60;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-save:hover:not(:disabled) {
+  background-color: #219150;
+  transform: translateY(-1px);
+}
+
+.btn-cancel {
+  background-color: #f4f6f8;
+  color: #606266;
+  border: 1px solid #dcdfe6;
+  padding: 11px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background-color: #e9ecef;
+}
+
+/* Estilo para botón de modo masivo */
+.price-editor-form button[type="submit"] {
+  padding: 11px 24px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  height: 42px;
+}
+
+/* --- TOASTS DE MENSAJES (NOTIFICACIONES) --- */
+.message-toast {
+  margin-top: 2rem;
+  padding: 12px 18px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  animation: slideInToast 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.message-toast p {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.message-toast.success {
+  background-color: #f0f9eb;
+  color: #67c23a;
+  border: 1px solid #e1f3d8;
+}
+
+.message-toast.error {
+  background-color: #fef0f0;
+  color: #f56c6c;
+  border: 1px solid #fde2e2;
+}
+
+/* BOTÓN "X" DEL TOAST ESTILIZADO */
+.btn-close-toast {
+  background: rgba(0, 0, 0, 0.04);
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: inherit;
+  font-size: 11px;
+  transition: all 0.2s ease;
+  margin-left: 15px;
+}
+
+.btn-close-toast:hover {
+  background: rgba(0, 0, 0, 0.08);
+  transform: rotate(90deg) scale(1.1);
+}
+
+/* --- ANIMACIONES --- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInToast {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- RESPONSIVE RADICAL PARA PRECIOS VISIBLES --- */
+@media (max-width: 768px) {
+  /* 1. Quitamos todo el margen lateral del contenedor para ganar espacio */
+  .price-editor-container {
+    padding: 0.2rem !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  /* 2. Reducción total de la grilla */
+  .calendar-grid {
+    gap: 1px !important; /* El mínimo posible */
+    padding: 2px !important;
+    width: 100% !important;
+  }
+
+  /* 3. Las celdas deben ser flexibles */
+  .calendar-cell {
+    min-height: 55px !important;
+    padding: 2px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* 4. EL TRUCO DEL PRECIO: Usamos unidades dinámicas (vw) */
+  .price-tag {
+    /* 2.2vw significa que la letra mide el 2.2% del ancho de la pantalla */
+    font-size: 2.2vw !important; 
+    padding: 1px !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.5px !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    width: 100% !important;
+    white-space: nowrap !important; /* Evita que el precio se rompa en dos líneas */
+    background: transparent !important; /* Quitamos fondo para que no se vea amontonado */
+    border: none !important;
+    color: #27ae60 !important; /* Verde fuerte para que se vea bien sin fondo */
+  }
+
+  /* 5. Nombres de los días ultra compactos */
+  .calendar-day-label {
+    font-size: 0.6rem !important;
+    padding: 2px 0 !important;
+  }
+
+  .day-number {
+    font-size: 0.7rem !important;
+    font-weight: 700 !important;
+  }
+}
+
+/* Ajuste para celulares muy chicos (iPhone SE o similares) */
+@media (max-width: 360px) {
+  .price-tag {
+    font-size: 2vw !important;
+  }
+}

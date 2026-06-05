@@ -1,0 +1,225 @@
+.analytics-dashboard {
+  padding: 2rem;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* --- CABECERA MEJORADA --- */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.dashboard-title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--color-secundario, #2c3e50);
+  font-weight: 700;
+}
+
+/* TOOLBAR (Contenedor derecha) */
+.dashboard-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.date-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.date-controls select {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #dcdfe6;
+  background-color: #f9fafb;
+  font-size: 0.9rem;
+  color: #606266;
+  cursor: pointer;
+}
+
+/* GRUPO DE BOTONES */
+.action-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-refresh-icon {
+  background: #f0f2f5;
+  border: 1px solid #e4e7ed;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+}
+
+.btn-refresh-icon:hover {
+  background: #e1e4e8;
+  border-color: var(--color-primario);
+  transform: rotate(30deg);
+}
+
+.btn-download-pdf {
+  padding: 8px 16px;
+  background-color: var(--color-primario, #3498db);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+  white-space: nowrap;
+}
+
+.btn-download-pdf:hover {
+  opacity: 0.9;
+}
+
+/* --- TARJETAS --- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.stat-card {
+  padding: 1.5rem;
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #edf2f7;
+  border-left: 6px solid #6c757d;
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+}
+
+.stat-card.ingresos { border-left-color: #2ecc71; background-color: #fafffb; }
+.stat-card.gastos { border-left-color: #e74c3c; background-color: #fffafa; }
+.stat-card.beneficio { border-left-color: #3498db; background-color: #f7fbff; }
+
+.stat-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #718096;
+}
+
+.stat-value {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.stat-trend {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.trend-positive { color: #2ecc71; }
+.trend-negative { color: #e74c3c; }
+
+.stat-note {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #a0aec0;
+  display: block;
+}
+
+/* GRÁFICO */
+.chart-container {
+  margin-top: 2.5rem;
+  background: #fff;
+  padding: 1rem;
+  border: 1px solid #edf2f7;
+  border-radius: 12px;
+}
+
+/* ANIMACIÓN SPIN */
+.spinning {
+  animation: spin 1s linear infinite;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* --- VISTA MÓVIL (Smartphones y pantallas estrechas) --- */
+@media (max-width: 650px) {
+  .analytics-dashboard {
+    padding: 1.2rem; /* Achicamos un poco el padding general para ganar espacio */
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: stretch; /* Obliga a los elementos a usar todo el ancho */
+    gap: 1.2rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .dashboard-title {
+    text-align: center; /* Queda mucho más simétrico en celulares */
+    font-size: 1.3rem;
+  }
+
+  .dashboard-toolbar {
+    flex-direction: column; /* Apila las fechas ARRIBA de los botones */
+    width: 100%;
+    gap: 1rem;
+  }
+
+  .date-controls {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .date-controls select {
+    flex: 1; /* Hace que el Mes y el Año midan exactamente 50% cada uno */
+    text-align: center;
+    padding: 10px; /* Un poco más alto para que el dedo acierte más fácil */
+  }
+
+  .action-group {
+    width: 100%;
+    display: flex;
+  }
+
+  .btn-download-pdf {
+    flex: 1; /* El botón PDF toma todo el espacio restante (se vuelve un botón ancho) */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1rem;
+    padding: 10px;
+  }
+  
+  /* Evita que las tarjetas se salgan de los bordes en celulares muy pequeños */
+  .stats-grid {
+    grid-template-columns: 1fr; /* Fuerza 1 sola columna en móviles */
+    gap: 1rem;
+  }
+}

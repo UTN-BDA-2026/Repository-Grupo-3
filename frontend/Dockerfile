@@ -1,14 +1,16 @@
-# Usamos una imagen liviana de Nginx
+# Etapa 1: Construcción (Build)
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Etapa 2: Servidor de producción (Nginx)
 FROM nginx:stable-alpine
-
-# Borramos los archivos por defecto de nginx
-RUN rm -rf /usr/share/nginx/html/*
-
-# Copiamos TU carpeta dist al directorio que sirve Nginx
-# El primer "dist" es tu carpeta local, el segundo es el destino en el contenedor
-COPY dist /usr/share/nginx/html
-
-# Exponemos el puerto 80
+# Copiamos los archivos construidos de la etapa anterior a Nginx
+COPY --from=build /app/dist /usr/share/nginx/html
+# Copiamos una configuración personalizada de Nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
-
 CMD ["nginx", "-g", "daemon off;"]

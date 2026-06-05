@@ -1,0 +1,135 @@
+/* --- ESTILOS PARA EL PANEL FLOTANTE DE RESERVAS --- */
+.mi-reserva-wrapper {
+    position: fixed; /* Posición fija en la pantalla */
+    bottom: 90px; /* Lo posicionamos justo encima del botón flotante */
+    right: 25px;
+    width: 90%;
+    max-width: 400px; /* Ancho máximo del panel */
+    max-height: 60vh; /* Altura máxima para que no ocupe toda la pantalla */
+    background-color: var(--color-fondo);
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    z-index: 1040;
+    border: 1px solid var(--color-borde);
+    /* Animación de entrada */
+    animation: slide-up 0.4s ease-out;
+    overflow: hidden; /* Oculta lo que se salga de los bordes redondeados */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Animación para que el panel aparezca desde abajo */
+@keyframes slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mi-reserva-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-borde);
+    flex-shrink: 0; /* Evita que la cabecera se encoja */
+}
+
+.mi-reserva-title {
+    color: var(--color-secundario);
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+.close-button {
+    background: none;
+    border: none;
+    color: var(--color-texto);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 5px;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.close-button:hover {
+    color: var(--color-secundario);
+}
+
+.mi-reserva-grid {
+    padding: 1.5rem;
+    overflow-y: auto; /* Permite scroll si hay muchas reservas */
+    display: grid;
+    gap: 1.5rem;
+}
+
+/* --- ESTILOS PARA LA TARJETA INDIVIDUAL DENTRO DEL PANEL --- */
+.reserva-card-modern {
+  background-color: var(--color-superficie);
+  border-radius: 8px;
+  border: 1px solid var(--color-borde);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.reserva-card-modern .reserva-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid var(--color-borde);
+}
+
+.reserva-date {
+  font-weight: 600;
+  color: var(--color-secundario);
+  font-size: 1rem;
+}
+
+.reserva-status {
+  padding: 0.3rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #fff;
+  text-transform: capitalize;
+}
+
+.status-confirmada { background-color: #27ae60; }
+.status-pendiente { background-color: #f39c12; }
+.status-cancelada { background-color: #e74c3c; }
+
+.reserva-body {
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.reserva-info-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.info-label {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-bottom: 0.25rem;
+}
+
+.info-value {
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--color-secundario);
+}
+
+.reserva-info-item.saldo .info-value {
+  color: var(--color-primario);
+  font-weight: 600;
+}

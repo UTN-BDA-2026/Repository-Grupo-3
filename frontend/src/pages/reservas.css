@@ -1,0 +1,304 @@
+/* --- CONFIGURACIÓN GENERAL --- */
+:root {
+  --res-bg: #cbd5e1;
+  --res-card: #f8fafc;
+  --res-text-main: #1e293b;
+  --res-text-muted: #64748b;
+  --res-primary: #3498db;
+  --res-success: #00b894;
+  --res-error: #e74c3c;
+  --res-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --res-radius: 24px;
+  --calendar-gap: 10px;
+}
+
+.reservas-page-container {
+  max-width: 1000px; /* Reducido para mayor elegancia central */
+  margin: 0 auto;
+  padding: 40px 20px;
+  font-family: 'Inter', sans-serif;
+  color: var(--res-text-main);
+  text-align: center;
+}
+
+.reservas-hero {
+  margin-bottom: 40px;
+}
+
+.reservas-hero h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: #0f172a;
+  letter-spacing: -1px;
+}
+
+/* --- ESTRUCTURA CENTRAL --- */
+.calendar-main-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+
+/* --- TARJETA DEL CALENDARIO (Más compacta) --- */
+.calendar-container-card {
+  background: var(--res-card);
+  border-radius: var(--res-radius);
+  padding: 30px;
+  box-shadow: var(--res-shadow);
+  border: 1px solid #92bde9;
+  width: 100%;
+  max-width: 750px; /* Limita el ancho para que no se vea tan largo */
+}
+
+.calendar-header-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.current-month-display h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  margin: 0;
+}
+
+.nav-arrow {
+  background: #f1f5f9;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 1.4rem;
+  cursor: pointer;
+  color: var(--res-primary);
+  transition: all 0.2s;
+}
+
+.nav-arrow:hover {
+  background: var(--res-primary);
+  color: white;
+}
+
+/* --- ENCABEZADOS DE DÍAS --- */
+.calendar-week-labels {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--calendar-gap);
+  margin-bottom: 15px;
+}
+
+.calendar-week-labels div {
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 1px;
+}
+
+/* --- GRID DE DÍAS --- */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--calendar-gap);
+}
+
+.calendar-day-wrapper {
+  aspect-ratio: 1 / 1; /* Celdas perfectamente cuadradas */
+}
+
+.calendar-day-card {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #a0ccf8;
+  border-radius: 14px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.day-number {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.day-price {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--res-success);
+  background: #f0fdf4;
+  padding: 2px 0;
+  border-radius: 6px;
+  width: 100%;
+  border: 1px solid #dcfce7;
+}
+
+/* --- ESTADOS --- */
+.calendar-day-card.disponible:hover {
+  border-color: var(--res-primary);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.calendar-day-card.past { opacity: 0.4; cursor: not-allowed; }
+.calendar-day-card.reservada { background: #ee8b8b; border-color: #c45454; cursor: not-allowed; }
+.calendar-day-card.pendiente { background: #f3dd82; border-color: #fef3c7; cursor: not-allowed;  }
+
+.calendar-day.empty { background: transparent; border: none; }
+
+/* --- INFORMACIÓN INFERIOR (INTEGRADA) --- */
+.calendar-info-bottom {
+  width: 100%;
+  max-width: 750px;
+}
+
+.info-card-integrated {
+  background: #ffffffcd;
+  padding: 20px 30px;
+  border-radius: 20px;
+  border: 1px solid #6da2d6;
+  text-align: left;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+}
+
+.info-card-integrated h4 {
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.info-card-integrated p {
+  margin: 0 0 15px 0;
+  font-size: 0.9rem;
+  color: var(--res-text-muted);
+  line-height: 1.5;
+}
+
+.disclaimer-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff9eb;
+  padding: 8px 15px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  color: #92400e;
+  border-left: 3px solid #f39c12;
+}
+
+/* --- LEYENDA --- */
+.calendar-footer-legend {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #badafa;
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+}
+
+.legend-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--res-text-muted);
+}
+
+.dot { width: 10px; height: 10px; border-radius: 3px; }
+.dot.disponible { background: var(--res-primary); }
+.dot.pendiente { background: #f59e0b; }
+.dot.reservada { background: var(--res-error); }
+
+/* --- TOAST --- */
+.notification-toast {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: #1e293b;
+  color: white;
+  padding: 15px 25px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  z-index: 9999;
+}
+
+
+/* --- RESPONSIVE CORREGIDO --- */
+@media (max-width: 600px) {
+  .reservas-page-container {
+    padding: 20px 10px; /* Menos espacio en los bordes de la pantalla */
+  }
+
+  .reservas-hero h1 {
+    font-size: 1.8rem; /* Título más acorde al móvil */
+  }
+
+  .calendar-container-card { 
+    padding: 10px; 
+    border-radius: 16px; /* Bordes un poco más suaves */
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .calendar-grid { 
+    gap: 4px; /* Bajamos de 10px a 4px para ganar 36px de ancho total */
+  }
+
+  .calendar-week-labels {
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .calendar-week-labels div {
+    font-size: 0.6rem; /* Nombres de días (DOM, LUN...) más chicos */
+    letter-spacing: 0;
+  }
+
+  .calendar-day-wrapper {
+    /* ELIMINAMOS el aspect-ratio para que la celda no se ensanche por culpa del precio */
+    aspect-ratio: auto; 
+    min-height: 55px; /* Altura mínima fija para que no queden chatos */
+  }
+
+  .calendar-day-card { 
+    border-radius: 6px; 
+    padding: 4px 2px; /* Padding lateral mínimo */
+    justify-content: space-around; /* Distribuye mejor número y precio */
+  }
+
+  .day-number { 
+    font-size: 0.8rem; 
+  }
+
+  .day-price { 
+    font-size: 0.55rem; /* Fuente pequeña para el $100.000 */
+    padding: 1px 0;
+    border-radius: 4px;
+    letter-spacing: -0.5px; /* Juntamos los números un poquito */
+    font-weight: 700;
+    width: 100%;
+    display: block;
+    text-align: center;
+  }
+
+  /* Ajuste para la leyenda inferior */
+  .calendar-footer-legend {
+    gap: 10px;
+    flex-wrap: wrap; /* Para que si no entran, bajen de línea */
+  }
+}
+
+/* Ajuste extra para teléfonos muy angostos */
+@media (max-width: 380px) {
+  .day-price {
+    font-size: 0.5rem;
+  }
+}
