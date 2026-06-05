@@ -24,6 +24,7 @@ def test_upcoming():
     Endpoint para ejecutar manually la tarea que revisa reservas próximas.
     """
     print("--- EJECUTANDO PRUEBA DE NOTIFICACIÓN PRÓXIMA ---")
+    from app.tasks import check_upcoming_reservations
     try:
         check_upcoming_reservations()
         return jsonify(message="Tarea de reservas próximas ejecutada. Revisa tu celular."), 200
