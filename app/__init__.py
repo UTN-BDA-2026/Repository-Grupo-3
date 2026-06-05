@@ -1,17 +1,12 @@
-import atexit
 import os
 
 import sentry_sdk
 from flask import Flask
-from flask_apscheduler import APScheduler
 from flask_jwt_extended import get_jwt, verify_jwt_in_request
 from sentry_sdk.integrations.flask import FlaskIntegration
 
 from app.config import factory
 from app.extensions import cache, db, jwt, limiter
-
-# Crear una instancia del planificador
-scheduler = APScheduler()
 
 def create_app(config_name=None):
     app = Flask(__name__)
@@ -31,36 +26,6 @@ def create_app(config_name=None):
     cache.init_app(app)
     limiter.init_app(app)
     jwt.init_app(app)
-
-    # --- INICIALIZACIÓN Y CONFIGURACIÓN DEL PLANIFICADOR ---
-
-    if os.getenv("FLASK_ENV") != "testing":
-        from app.tasks import (check_pending_reservations,
-                               check_upcoming_reservations)
-
-        # Creamos funciones "wrapper" que proporcionan el contexto de la app
-        def run_pending_job():
-            with app.app_context():
-                check_pending_reservations()
-
-        def run_upcoming_job():
-            with app.app_context():
-                check_upcoming_reservations()
-
-        scheduler.init_app(app)
-        
-        if scheduler.get_job('check_pending'):
-            scheduler.remove_job('check_pending')
-        if scheduler.get_job('check_upcoming'):
-            scheduler.remove_job('check_upcoming')
-
-        # El planificador ahora llama a las funciones "wrapper"
-        scheduler.add_job(id='check_pending', func=run_pending_job, trigger='cron', hour=9)
-        scheduler.add_job(id='check_upcoming', func=run_upcoming_job, trigger='cron', hour=10)
-        
-        scheduler.start()
-        
-        atexit.register(lambda: scheduler.shutdown())
 
     # Middleware de Sentry
     @app.before_request

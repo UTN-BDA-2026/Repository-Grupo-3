@@ -76,20 +76,19 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      env_file:
-        - .env
-      environment:
-        - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-        - TELEGRAM_CHAT_IDS=${TELEGRAM_CHAT_IDS}
-      # Este comando arranca a Celery con el worker
-      comand: celery -A app.celery_app.celery worker --loglevel=info
-      networks:
-        - red1
-      depends_on:
-        db:
-          condition: service_healthy
-        redis:
-          condition: service_started
+    env_file:
+      - .env
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_IDS=${TELEGRAM_CHAT_IDS}
+    command: celery -A app.celery_app.celery worker --loglevel=info
+    networks:
+      - red1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   frontend:
     container_name: salon_frontend
