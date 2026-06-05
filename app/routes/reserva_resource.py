@@ -1,7 +1,7 @@
 import os
-from datetime import datetime
-
 import sentry_sdk
+
+from datetime import datetime
 from flask import Blueprint, render_template, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import ValidationError
@@ -84,14 +84,12 @@ def one(id):
         return response_builder.add_message(f"Error: {str(e)}").add_status_code(500).build(), 500
 
 
-
 @Reserva.route('/reserva/solicitar', methods=['POST'])
 @limiter.limit("20 per minute")
 @jwt_required()
 def request_by_user():
-    from app import scheduler
+    import base64
     from app.tasks import procesar_comprobante_y_notificar
-    from flask import current_app
     
     service = ReservaService()
     reserva_schema = ReservaSchema()
@@ -114,12 +112,14 @@ def request_by_user():
         if archivo.filename == '':
             return response_builder.add_message("Archivo sin nombre").add_status_code(400).build(), 400
 
-        #1: Leer en RAM antes de perder el contexto
+        # 3. Leer y convertir a texto seguro (Base64)
         archivo_bytes = archivo.read()
+        archivo_b64 = base64.b64encode(archivo_bytes).decode('utf-8')
+        
         filename = secure_filename(archivo.filename)
         content_type = archivo.content_type
         
-        #2: Guardar en la bd sin URL 
+        # 4. Guardar en la bd sin URL (temporalmente)
         reserva_data = {
             'fecha_id': int(fecha_id),
             'usuario_id': user_id,
@@ -130,7 +130,6 @@ def request_by_user():
             'hora_fin': request.form.get('hora_fin')
         }
         
-        
         reserva = reserva_schema.load(reserva_data)
         reserva.ip_aceptacion = request.remote_addr
         reserva.fecha_aceptacion = datetime.utcnow()
@@ -139,13 +138,13 @@ def request_by_user():
         reserva_creada = service.add(reserva)
         reserva_id = reserva_creada.id
         
-        #3: Delego todo el trabajo pesado al scheduler
-        app_context = current_app._get_current_object()
-        scheduler.add_job(
-            func=procesar_comprobante_y_notificar,
-            args=[app_context, reserva_id, archivo_bytes, filename, content_type, int(fecha_id)],
-            id=f'comprobante_{reserva_id}',
-            replace_existing=True
+        # 5. Mandamos el trabajo a Redis.
+        procesar_comprobante_y_notificar.delay(    # .delay() pone el trabajo en cola y devuelve el control 
+            reserva_id, 
+            archivo_b64, 
+            filename, 
+            content_type, 
+            int(fecha_id)
         )
         
         data = reserva_schema.dump(reserva_creada)
@@ -158,8 +157,7 @@ def request_by_user():
     except Exception as e:
         db.session.rollback()
         sentry_sdk.capture_exception(e)
-        return response_builder.add_message(f"Error al procesar reserva: {str(e)}").add_status_code(500).build(), 500
-    
+        return response_builder.add_message(f"Error al procesar reserva: {str(e)}").add_status_code(500).build(), 500   
  
 @Reserva.route('/reserva/crear', methods=['POST'])
 @limiter.limit("50 per minute")
