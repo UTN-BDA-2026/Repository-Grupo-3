@@ -1,10 +1,12 @@
 import io
+import base64
 import sentry_sdk
 from werkzeug.datastructures import FileStorage
 from app.extensions import db, cache
 
 from datetime import datetime, timedelta
 from app.models import Reserva
+from app.celery_app import celery
 from app.services.push_notification_service import PushNotificationService
 
 
@@ -42,57 +44,48 @@ def check_upcoming_reservations():
             print(f"Tarea 'check_upcoming_reservations' ejecutada: Notificación enviada para la reserva de {user.nombre}.")
             
             
-def procesar_comprobante_y_notificar(app, reserva_id: int, archivo_bytes: bytes,
-                                      filename: str, content_type: str, fecha_id: int):
-    """
-    Tarea en segundo plano: sube el comprobante a R2, actualiza la bd y manda la noti por Telegram
-    """
+@celery.task #Este decorador convierte la función en un Background Job de Celery
+def procesar_comprobante_y_notificar(reserva_id: int, archivo_b64: str,
+                                     filename: str, content_type: str, fecha_id: int):
+    
     from app.utils.storage import upload_file_to_r2
     from app.services.push_notification_service import PushNotificationService
+    
+    # ahora celery hace automatico lo que hacia "with app.app_context()"
+    try:
+        # 1. Decodificamos el Base64 de vuelta a Bytes
+        archivo_bytes = base64.b64decode(archivo_b64)
 
-    with app.app_context():
+        # 2. Reconstruir el objeto de archivo
+        archivo_reconstruido = FileStorage(
+            stream=io.BytesIO(archivo_bytes),
+            filename=filename,
+            content_type=content_type
+        )
+
+        # 3. Subir a R2
+        archivo_url = upload_file_to_r2(archivo_reconstruido, folder=f"comprobantes/fecha_{fecha_id}")
+
+        # 4. Actualizar la base de datos
+        reserva = db.session.get(Reserva, reserva_id)
+        if not reserva:
+            return
+
+        if archivo_url:
+            reserva.comprobante_url = archivo_url
+            db.session.commit()
+            cache.delete(f'reserva_{reserva_id}')
+            cache.delete('reservas')
+
+        # 5. Telegram
         try:
-            # Reconstruye el archivo en memoria para subirlo a R2
-            archivo_reconstruido = FileStorage(
-                stream=io.BytesIO(archivo_bytes),
-                filename=filename,
-                content_type=content_type
-            )
-
-            # Subo a la nube
-            archivo_url = upload_file_to_r2(
-                archivo_reconstruido,
-                folder=f"comprobantes/fecha_{fecha_id}"
-            )
-
-            # Actualizo la base de datos
-            reserva = db.session.get(Reserva, reserva_id)
-            if not reserva:
-                return
-
-            if archivo_url:
-                reserva.comprobante_url = archivo_url
-                db.session.commit()
-                
-                # Limpio la cache para que el frontend vea la nueva URL
-                cache.delete(f'reserva_{reserva_id}')
-                cache.delete('reservas')
-
-            #  Notificacion a Telegram
-            try:
-                u = reserva.usuario
-                nombre_cliente = f"{u.nombre} {u.apellido}" if u else "Nuevo Cliente"
-                telegram = PushNotificationService()
-                mensaje = (
-                    f"👤 *Cliente:* {nombre_cliente}\n"
-                    f"📅 *Fecha:* {reserva.fecha.dia}\n"
-                    f"📋 *Estado:* {reserva.estado.capitalize()}"
-                )
-                telegram.send_notification(mensaje, title="🆕 ¡Nueva Solicitud de Reserva!")
-            except Exception as e:
-                sentry_sdk.capture_exception(e)
-                print(f"Error Telegram en background: {e}")
-
+            u = reserva.usuario
+            nombre_cliente = f"{u.nombre} {u.apellido}" if u else "Nuevo Cliente"
+            telegram = PushNotificationService()
+            mensaje = f"👤 *Cliente:* {nombre_cliente}\n📅 *Fecha:* {reserva.fecha.dia}\n📋 *Estado:* {reserva.estado.capitalize()}"
+            telegram.send_notification(mensaje, title="🆕 ¡Nueva Solicitud de Reserva!")
         except Exception as e:
             sentry_sdk.capture_exception(e)
-            print(f"Error crítico en tarea procesar_comprobante: {e}")            
+            
+    except Exception as e:
+        sentry_sdk.capture_exception(e)
