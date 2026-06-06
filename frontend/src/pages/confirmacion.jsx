@@ -75,18 +75,18 @@ function Confirmacion() {
   const navigate = useNavigate();
 
   const [fechaInfo, setFechaInfo] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Para la carga inicial de la página
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  
+  // --- NUEVO ESTADO PARA LA PANTALLA COMPLETA ---
+  const [estadoPantalla, setEstadoPantalla] = useState('formulario'); // 'formulario' | 'cargando' | 'exito'
   
   const [contractAccepted, setContractAccepted] = useState(false);
   const [receiptFile, setReceiptFile] = useState(null);
 
-  // Estados para CVU y feedback de copiado
   const [paymentCVU, setPaymentCVU] = useState(null);
   const [copied, setCopied] = useState(false);
 
-  // --- FUNCIÓN PARA COPIAR AL PORTAPAPELES ---
   const handleCopyCVU = () => {
     if (paymentCVU) {
       navigator.clipboard.writeText(paymentCVU)
@@ -134,7 +134,6 @@ function Confirmacion() {
         const paymentResult = await paymentResponse.json();
         if (!paymentResponse.ok) throw new Error(paymentResult.message);
         
-        // Seteamos el CVU (o alias si la API aún no cambió el campo)
         setPaymentCVU(paymentResult.data.cvu || paymentResult.data.alias);
 
       } catch (err) {
@@ -147,39 +146,77 @@ function Confirmacion() {
     getPageData();
   }, [dateString, navigate]);
 
+  // --- LÓGICA MODIFICADA DE ENVÍO ---
   const handleRequestReservation = async () => {
     if (!contractAccepted || !receiptFile) {
       setError('Debes aceptar los términos y subir el comprobante.');
       return;
     }
     const token = localStorage.getItem('authToken');
-    setIsLoading(true);
+    
+    // 1. Mostrar pantalla de carga gigante
+    setEstadoPantalla('cargando');
+    setError('');
 
     const formData = new FormData();
     formData.append('fecha_id', fechaInfo.id);
     formData.append('comprobante', receiptFile);
     formData.append('capacidad_declarada', 40);
 
+    const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
     try {
-      const response = await fetch('/api/v1/reserva/solicitar', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
+      // 2. Ejecutar la petición y el temporizador en paralelo
+      const [response] = await Promise.all([
+        fetch('/api/v1/reserva/solicitar', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        }),
+        esperar(2500) // Retraso artificial de 2.5 segundos
+      ]);
+      
       const result = await response.json();
       if (!response.ok) throw new Error(result.message);
 
-      setMessage('¡Solicitud enviada con éxito! El administrador revisará tu comprobante y confirmará la capacidad final.');
-      setTimeout(() => navigate('/'), 4000);
+      // 3. Mostrar pantalla de éxito gigante
+      setEstadoPantalla('exito');
+
+      // 4. Redirigir después de 3.5 segundos
+      setTimeout(() => navigate('/'), 3500);
+
     } catch (err) {
       setError(err.message);
-    } finally {
-      setIsLoading(false);
+      setEstadoPantalla('formulario'); // Devolver al formulario si hay error
     }
   };
 
+  // Renderizado inicial mientras busca datos de la BD
   if (isLoading) return <div className="confirm-container"><p>Cargando información de la reserva...</p></div>;
   
+  // --- INTERCEPCIÓN DE PANTALLA: CARGANDO ---
+  if (estadoPantalla === 'cargando') {
+    return (
+      <div className="overlay-pantalla-completa">
+        <div className="spinner-gigante"></div>
+        <h1>Procesando comprobante...</h1>
+        <p>Asegurando tu reserva, no cierres la ventana.</p>
+      </div>
+    );
+  }
+
+  // --- INTERCEPCIÓN DE PANTALLA: ÉXITO ---
+  if (estadoPantalla === 'exito') {
+    return (
+      <div className="overlay-pantalla-completa">
+        <div className="check-gigante">✓</div>
+        <h1>¡Reserva Confirmada!</h1>
+        <p>Redirigiendo al inicio...</p>
+      </div>
+    );
+  }
+
+  // Renderizado normal del formulario
   return (
     <div className="confirm-container">
       <div className="confirm-box">
@@ -235,16 +272,15 @@ function Confirmacion() {
             <button 
               onClick={handleRequestReservation} 
               className="confirm-button"
-              disabled={isLoading || !contractAccepted || !receiptFile}
+              disabled={!contractAccepted || !receiptFile}
             >
-              {isLoading ? 'Enviando...' : 'Enviar Solicitud'}
+              Enviar Solicitud
             </button>
           </>
         ) : (
           <h2>{error || 'Fecha no disponible'}</h2>
         )}
 
-        {message && <p className="message-area success">{message}</p>}
         {error && <p className="error-message">{error}</p>}
       </div>
     </div>
