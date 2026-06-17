@@ -1,12 +1,12 @@
 from flask import Blueprint, jsonify
 
+from app.tasks import check_pending_reservations, check_upcoming_reservations
 
 # Creamos un nuevo Blueprint para las rutas de prueba
 TestNotifications = Blueprint('TestNotifications', __name__)
 
 @TestNotifications.route('/test/pending', methods=['GET'])
 def test_pending():
-    from app.tasks import check_pending_reservations, check_upcoming_reservations
     """
     Endpoint para ejecutar manualmente la tarea que revisa reservas pendientes.
     """
@@ -24,7 +24,6 @@ def test_upcoming():
     Endpoint para ejecutar manually la tarea que revisa reservas próximas.
     """
     print("--- EJECUTANDO PRUEBA DE NOTIFICACIÓN PRÓXIMA ---")
-    from app.tasks import check_upcoming_reservations
     try:
         check_upcoming_reservations()
         return jsonify(message="Tarea de reservas próximas ejecutada. Revisa tu celular."), 200

@@ -130,7 +130,7 @@ def update(id):
         return response_builder.build(), 500
 
 @Fecha.route('/fecha/<int:id>', methods=['DELETE'])
-@limiter.limit("10 per minute")
+@limiter.limit("20 per minute")
 @admin_required()
 @jwt_required()
 

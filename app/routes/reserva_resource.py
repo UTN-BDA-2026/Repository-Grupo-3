@@ -1,18 +1,18 @@
 import os
-import sentry_sdk
-
 from datetime import datetime
+from app.tasks import procesar_reserva_background
+import sentry_sdk
 from flask import Blueprint, render_template, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import ValidationError
 from werkzeug.utils import secure_filename
-
+from app.tasks import enviar_contrato_background
 from app.config.response_builder import ResponseBuilder
 from app.extensions import db, limiter
 from app.mapping import ReservaSchema, ResponseSchema
 from app.services import NotificationService, ReservaService
 from app.utils.decorators import admin_required
-from app.utils.storage import upload_file_to_r2
+
 
 Reserva = Blueprint('Reserva', __name__)
 def _enviar_contrato_confirmacion(reserva_obj):
@@ -42,9 +42,8 @@ def _enviar_contrato_confirmacion(reserva_obj):
         )
     except Exception as mail_err:
         sentry_sdk.capture_exception(mail_err)  
-
-
 @Reserva.route('/reserva', methods=['GET'])
+@admin_required()
 @limiter.limit("100 per minute") # Límite aumentado para el panel admin
 def all():
     # Instanciamos todo dentro para asegurar el contexto de Flask
@@ -61,10 +60,9 @@ def all():
         sentry_sdk.capture_exception(e)
         return response_builder.add_message(f"Error al obtener reservas: {str(e)}").add_status_code(500).build(), 500
 
-
-
 @Reserva.route('/reserva/<int:id>', methods=['GET'])
 @limiter.limit("100 per minute")
+@admin_required()
 def one(id):
     service = ReservaService()
     reserva_schema = ReservaSchema()
@@ -83,14 +81,10 @@ def one(id):
         db.session.rollback()
         return response_builder.add_message(f"Error: {str(e)}").add_status_code(500).build(), 500
 
-
 @Reserva.route('/reserva/solicitar', methods=['POST'])
 @limiter.limit("20 per minute")
 @jwt_required()
 def request_by_user():
-    import base64
-    from app.tasks import procesar_comprobante_y_notificar
-    
     service = ReservaService()
     reserva_schema = ReservaSchema()
     response_builder = ResponseBuilder()
@@ -101,8 +95,6 @@ def request_by_user():
             return response_builder.add_message("No se subió ningún comprobante").add_status_code(400).build(), 400
 
         archivo = request.files['comprobante']
-        
-        # 2. Obtener los datos del formulario
         fecha_id = request.form.get('fecha_id')
         user_id = int(get_jwt_identity())
 
@@ -112,18 +104,19 @@ def request_by_user():
         if archivo.filename == '':
             return response_builder.add_message("Archivo sin nombre").add_status_code(400).build(), 400
 
-        # 3. Leer y convertir a texto seguro (Base64)
-        archivo_bytes = archivo.read()
-        archivo_b64 = base64.b64encode(archivo_bytes).decode('utf-8')
-        
+        # limpiamos el nombre y añadimos un timestamp para evitar colisiones entre usuarios
         filename = secure_filename(archivo.filename)
-        content_type = archivo.content_type
+        nombre_seguro = f"{int(datetime.utcnow().timestamp())}_{filename}"
         
-        # 4. Guardar en la bd sin URL (temporalmente)
+        # Guardamos en la raíz del volumen compartido configurado en Docker
+        ruta_local = os.path.join('/home/flaskapp/app/uploads', nombre_seguro)
+        archivo.save(ruta_local)
+
+        # 4. Preparar el objeto para la base de datos con un placeholder temporal
         reserva_data = {
             'fecha_id': int(fecha_id),
             'usuario_id': user_id,
-            'comprobante_url': 'procesando_comprobante', 
+            'comprobante_url': 'procesando...', # Esto evitará celdas vacías y se actualizará en Celery
             'estado': 'pendiente',
             'cantidad_personas': request.form.get('cantidad_personas', 40),
             'hora_inicio': request.form.get('hora_inicio'), 
@@ -134,21 +127,15 @@ def request_by_user():
         reserva.ip_aceptacion = request.remote_addr
         reserva.fecha_aceptacion = datetime.utcnow()
 
-        # Guardar en DB mediante el servicio
+        # 5. Guardar en DB mediante el servicio (pone la fecha en 'pendiente')
         reserva_creada = service.add(reserva)
-        reserva_id = reserva_creada.id
         
-        # 5. Mandamos el trabajo a Redis.
-        procesar_comprobante_y_notificar.delay(    # .delay() pone el trabajo en cola y devuelve el control 
-            reserva_id, 
-            archivo_b64, 
-            filename, 
-            content_type, 
-            int(fecha_id)
-        )
+        # 6. Despachamos el ID de la reserva y la RUTA del archivo local a Celery
+        procesar_reserva_background.delay(reserva_creada.id, ruta_local)
         
+        # 7. Respuesta inmediata al frontend
         data = reserva_schema.dump(reserva_creada)
-        response_builder.add_message("Reserva solicitada con éxito. El comprobante se está procesando.").add_status_code(201).add_data(data)
+        response_builder.add_message("Reserva solicitada con éxito. ¡Te notificaremos en breve!").add_status_code(201).add_data(data)
         return response_builder.build(), 201
         
     except ValidationError as err:
@@ -157,8 +144,16 @@ def request_by_user():
     except Exception as e:
         db.session.rollback()
         sentry_sdk.capture_exception(e)
-        return response_builder.add_message(f"Error al procesar reserva: {str(e)}").add_status_code(500).build(), 500   
- 
+        
+        # Limpieza de seguridad: si algo falló antes del .delay(), borramos el archivo local si existe
+        if 'ruta_local' in locals() and os.path.exists(ruta_local):
+            try:
+                os.remove(ruta_local)
+            except Exception:
+                pass
+                
+        return response_builder.add_message(f"Error al procesar reserva: {str(e)}").add_status_code(500).build(), 500
+
 @Reserva.route('/reserva/crear', methods=['POST'])
 @limiter.limit("50 per minute")
 @jwt_required()
@@ -189,15 +184,20 @@ def create_for_admin():
         # Guardamos en la base de datos y atrapamos el objeto creado
         reserva_creada = service.add(reserva)
 
-        # Disparamos el contrato si el administrador la creó como 'confirmada'
         if reserva_creada.estado == 'confirmada':
-            _enviar_contrato_confirmacion(reserva_creada)
+            enviar_contrato_background.delay(reserva_creada.id)
 
         data = reserva_schema.dump(reserva_creada)
         response_builder.add_message("Reserva creada por admin").add_status_code(201).add_data(data)
         return response_builder.build(), 201
+        
+    except ValidationError as err:
+        db.session.rollback()
+        return response_builder.add_message("Error de validación").add_status_code(422).add_data(err.messages).build(), 422
     except Exception as e:
         db.session.rollback()
+        sentry_sdk.capture_exception(e)
+        
         return response_builder.add_message(f"Error en creación admin: {str(e)}").add_status_code(500).build(), 500
     
 @Reserva.route('/reserva/<int:id>', methods=['PUT'])
@@ -223,9 +223,8 @@ def update(id):
 
         updated_reserva = service.update(id, json_data)
         
-        # Disparamos el contrato si el estado cambió a 'confirmada'
         if nuevo_estado == 'confirmada' and estado_anterior != 'confirmada':
-            _enviar_contrato_confirmacion(updated_reserva)
+            enviar_contrato_background.delay(updated_reserva.id)
         
         data = reserva_schema.dump(updated_reserva)
         response_builder.add_message("Reserva actualizada").add_status_code(200).add_data(data)

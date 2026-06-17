@@ -1,5 +1,4 @@
 import io
-import logging
 import os
 import uuid
 
@@ -7,31 +6,19 @@ import boto3
 from botocore.exceptions import ClientError
 from werkzeug.utils import secure_filename
 
-r2_endpoint = os.getenv('R2_ENDPOINT_URL')
-
-if r2_endpoint:
-    s3_client = boto3.client(
-        's3',
-        endpoint_url=r2_endpoint,
-        aws_access_key_id=os.getenv('R2_ACCESS_KEY_ID'),
-        aws_secret_access_key=os.getenv('R2_SECRET_ACCESS_KEY'),
-        region_name='auto'
-    )
-else:
-    # Si falta la configuración, el cliente es None, pero LA APP NO EXPLOTA
-    s3_client = None
-    logging.warning("R2_ENDPOINT_URL no configurado. La subida de archivos a la nube está desactivada.")
-
+# Inicializamos el cliente de S3 apuntando a Cloudflare R2
+s3_client = boto3.client(
+    's3',
+    endpoint_url=os.getenv('R2_ENDPOINT_URL'),
+    aws_access_key_id=os.getenv('R2_ACCESS_KEY_ID'),
+    aws_secret_access_key=os.getenv('R2_SECRET_ACCESS_KEY'),
+    region_name='auto' # R2 no usa regiones específicas como AWS
+)
 
 def upload_file_to_r2(file, folder="uploads"):
     """
     Sube un archivo a Cloudflare R2 y retorna la URL pública.
     """
-    # Si no hay cliente, salimos
-    if s3_client is None:
-        logging.error("No se puede subir el archivo: Cloudflare R2 no está configurado.")
-        return None
-
     try:
         # 1. Limpiamos el nombre original (quita espacios y caracteres raros)
         filename = secure_filename(file.filename)
@@ -45,6 +32,8 @@ def upload_file_to_r2(file, folder="uploads"):
             file,
             os.getenv('R2_BUCKET_NAME'),
             unique_filename,
+            # Esto es VITAL para que el navegador muestre las imágenes/PDFs 
+            # en lugar de forzar su descarga automáticamente.
             ExtraArgs={"ContentType": file.content_type} 
         )
         
@@ -54,19 +43,12 @@ def upload_file_to_r2(file, folder="uploads"):
         return public_url
 
     except ClientError as e:
-        logging.error(f"Error crítico subiendo archivo a R2: {e}")
+        print(f"Error crítico subiendo archivo a R2: {e}")
         return None
-
-
 def upload_bytes_to_r2(file_bytes, filename, folder="contratos_definitivos"):
     """
     Sube un archivo a Cloudflare R2 directamente desde la memoria RAM (bytes).
     """
-    # Si no hay cliente, salimos
-    if s3_client is None:
-        logging.error("No se pueden subir los bytes: Cloudflare R2 no está configurado.")
-        return None
-
     try:
         # Generamos el nombre único
         unique_filename = f"{folder}/{uuid.uuid4().hex}_{filename}"
@@ -87,5 +69,5 @@ def upload_bytes_to_r2(file_bytes, filename, folder="contratos_definitivos"):
         return public_url
 
     except Exception as e:
-        logging.error(f"Error crítico subiendo bytes a R2: {e}")
+        print(f"Error crítico subiendo bytes a R2: {e}")
         return None

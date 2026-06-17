@@ -11,7 +11,10 @@ from app.extensions import cache, db, jwt, limiter
 def create_app(config_name=None):
     app = Flask(__name__)
     app.config.from_object(factory(config_name))
-
+    
+    # Inicialización de Celery para vincularlo al contexto de Flask
+    from app.celery_app import celery
+    
     # Configuración de Sentry
     sentry_dsn = os.getenv("SENTRY_DSN_BACKEND")
     if sentry_dsn:
@@ -58,6 +61,7 @@ def create_app(config_name=None):
     from app.routes.reserva_resource import Reserva
     from app.routes.test_notifications_resource import TestNotifications
     from app.routes.usuario_resource import Usuario
+    
     app.register_blueprint(Administrador, url_prefix='/api/v1')
     app.register_blueprint(Usuario, url_prefix='/api/v1')
     app.register_blueprint(Fecha, url_prefix='/api/v1')
@@ -74,4 +78,5 @@ def create_app(config_name=None):
     @app.teardown_appcontext
     def shutdown_session(exception=None):
         db.session.remove()
+        
     return app

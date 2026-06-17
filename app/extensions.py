@@ -1,3 +1,5 @@
+# Contenido para app/extensions.py
+
 import os
 
 import redis
@@ -26,6 +28,6 @@ redis_client = redis.StrictRedis(
 redis_uri = f"redis://:{redis_password}@{redis_host}:{redis_port}/{redis_db}"
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=["10 per minute"],
+    default_limits=["50 per minute"],
     storage_uri=redis_uri
 )

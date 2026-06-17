@@ -1,0 +1,72 @@
+=============================================================================
+ GUÍA DE RECUPERACIÓN ANTE DESASTRES (DISASTER RECOVERY)
+=============================================================================
+Si la base de datos de producción se corrompe, se borran datos por accidente, 
+o necesitamos levantar el entorno desde cero con los datos reales, sigue 
+estos pasos directamente en la terminal del servidor KVM.
+
+PASO 1: LISTAR Y DESCARGAR EL BACKUP DESDE GOOGLE DRIVE
+-----------------------------------------------------------------------------
+Como Rclone ya está vinculado, vamos a pedirle a la KVM que traiga el archivo 
+directamente desde la nube.
+
+1. Mira qué backups hay disponibles en la carpeta de Drive ejecutando:
+   rclone ls gdrive:Backups_Salon/
+
+2. Copia el nombre exacto del archivo que quieres restaurar (ejemplo: 
+   salon_backup_2026-03-27_03-00-00.sql.gz.enc).
+
+3. Descarga ese archivo a la carpeta del proyecto en la KVM:
+   rclone copy gdrive:Backups_Salon/NOMBRE_DEL_ARCHIVO.sql.gz.enc /root/Salon-de-eventos/
+
+
+PASO 2: DESCIFRAR Y DESCOMPRIMIR
+-----------------------------------------------------------------------------
+El archivo descargado está blindado. Necesitas buscar la clave exacta que 
+está en el archivo App/.env en la variable PASSWORD_CIFRADO.
+
+Ejecuta este comando reemplazando la contraseña y el nombre del archivo:
+
+openssl enc -d -aes-256-cbc -pbkdf2 -pass pass:"LA_CONTRASEÑA_DEL_ENV" -in /root/Salon-de-eventos/NOMBRE_DEL_ARCHIVO.sql.gz.enc | gunzip > /root/Salon-de-eventos/restauracion_limpia.sql
+
+* Tip de validación: Ejecuta `head -n 10 /root/Salon-de-eventos/restauracion_limpia.sql`. 
+  Deberías ver comandos SQL en texto legible. Si ves símbolos raros, pusiste 
+  mal la contraseña.
+
+
+PASO 3: PREPARAR LA BASE DE DATOS DESTINO
+-----------------------------------------------------------------------------
+Antes de inyectar los datos, necesitamos vaciar la base de producción actual 
+para que no haya conflictos de IDs ni tablas duplicadas.
+
+1. Borrar la base de datos dañada:
+   docker exec -it salon_db psql -U admin -d postgres -c "DROP DATABASE salon_db;"
+
+2. Crear la base de datos desde cero (limpia):
+   docker exec -it salon_db psql -U admin -d postgres -c "CREATE DATABASE salon_db;"
+
+
+PASO 4: INYECTAR LOS DATOS (RESTAURACIÓN)
+-----------------------------------------------------------------------------
+Ahora empujamos todo el código SQL hacia la base limpia. Esto reconstruye 
+la arquitectura y los registros en milisegundos.
+
+cat /root/Salon-de-eventos/restauracion_limpia.sql | docker exec -i salon_db psql -U admin -d salon_db
+
+* Si la consola empieza a mostrar mensajes como "SET", "CREATE TABLE", 
+  "ALTER TABLE" y "COPY", el sistema se está recuperando exitosamente.
+
+
+PASO 5: LIMPIEZA DE SEGURIDAD (¡OBLIGATORIO!)
+-----------------------------------------------------------------------------
+El archivo .sql contiene toda la información real de los clientes y pagos del 
+salón de eventos en texto plano. NUNCA lo dejes tirado en el servidor.
+
+1. Borra el archivo descifrado:
+   rm /root/Salon-de-eventos/restauracion_limpia.sql
+
+2. Borra también el archivo cifrado que descargaste en el Paso 1:
+   rm /root/Salon-de-eventos/NOMBRE_DEL_ARCHIVO.sql.gz.enc
+
+¡El sistema ya está restaurado y operativo!
+=============================================================================

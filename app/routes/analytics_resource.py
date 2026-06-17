@@ -102,7 +102,107 @@ def get_analytics():
             tendencia_ingresos = ((ingresos_mes_seleccionado - ingresos_mes_anterior) / ingresos_mes_anterior) * 100
         elif ingresos_mes_seleccionado > 0:
             tendencia_ingresos = 100
+            
+        # =====================================================================
+        # LÓGICA PARA EL DESGLOSE DE GASTOS (Gráfico de Torta)
+        # =====================================================================
+        agrupados = db.session.query(
+            Gasto.categoria.label('nombre_cat'), 
+            func.sum(Gasto.monto).label('total')
+        ).filter(
+            extract('year', Gasto.fecha) == anio_seleccionado,
+            extract('month', Gasto.fecha) == mes_seleccionado
+        ).group_by(Gasto.categoria).all()
 
+        PALETA_COLORES = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
+        desglose_gastos = []
+        for i, row in enumerate(agrupados):
+            desglose_gastos.append({
+                "name": getattr(row, 'nombre_cat', 'Otros') or "Otros",
+                "value": float(row.total) if row.total else 0,
+                "color": PALETA_COLORES[i % len(PALETA_COLORES)]
+            })
+
+        # =====================================================================
+        # LÓGICA PARA LOS ÚLTIMOS MOVIMIENTOS (Feed lateral)
+        # =====================================================================
+        art_tz = pytz.timezone('America/Argentina/Buenos_Aires')
+        movimientos_crudos = []
+        
+        # Función auxiliar para normalizar y evitar que las fechas puras (00:00) resten 3 horas
+        def normalizar_fecha(d):
+            if not d:
+                return datetime.now(art_tz)
+            if isinstance(d, date) and not isinstance(d, datetime):
+                # Si es un Date puro (ej. Gastos), lo atamos directamente a la hora local a las 00:00
+                return art_tz.localize(datetime.combine(d, datetime.min.time()))
+            
+            # Si es un Datetime (ej. Reservas), asumimos que viene en UTC de la BD
+            if d.tzinfo is None:
+                return pytz.utc.localize(d)
+            return d
+        
+        # 1. Buscamos los 10 gastos más recientes
+        gastos_recientes = db.session.query(Gasto).filter(
+            extract('year', Gasto.fecha) == anio_seleccionado,
+            extract('month', Gasto.fecha) == mes_seleccionado
+        ).order_by(Gasto.fecha.desc()).limit(10).all()
+        
+        for g in gastos_recientes:
+            cat = getattr(g, 'categoria', None) or getattr(g, 'concepto', None) or 'Otros'
+            movimientos_crudos.append({
+                "id": f"gasto_{g.id}",
+                "type": "gasto",
+                "text": f"Gasto registrado: {cat}",
+                "amount": -float(g.monto),
+                "raw_date": normalizar_fecha(g.fecha)
+            })
+
+        # 2. Buscamos las 10 reservas más recientes
+        reservas_recientes = db.session.query(Reserva).filter(
+            extract('year', Reserva.fecha_aceptacion) == anio_seleccionado,
+            extract('month', Reserva.fecha_aceptacion) == mes_seleccionado
+        ).order_by(Reserva.fecha_aceptacion.desc()).limit(10).all()
+        
+        for r in reservas_recientes:
+            texto = f"Reserva {r.estado.capitalize()}"
+            if r.usuario:
+                texto += f": {r.usuario.nombre} {r.usuario.apellido}"
+                
+            tipo_mov = "ingreso" if r.estado == "confirmada" else "info"
+            monto_mov = float(r.valor_alquiler) if r.estado == "confirmada" else None
+            
+            movimientos_crudos.append({
+                "id": f"reserva_{r.id}",
+                "type": tipo_mov,
+                "text": texto,
+                "amount": monto_mov,
+                "raw_date": normalizar_fecha(r.fecha_aceptacion)
+            })
+
+        # 3. Ordenamos usando el objeto datetime real
+        movimientos_crudos.sort(key=lambda x: x['raw_date'], reverse=True)
+        
+        # 4. Formateamos a la hora local
+        ultimos_movimientos = []
+        for m in movimientos_crudos[:7]:
+            dt_local = m['raw_date'].astimezone(art_tz)
+            
+            # Si el registro no tiene hora exacta (es 00:00), mostramos solo la fecha
+            if dt_local.hour == 0 and dt_local.minute == 0:
+                str_date = dt_local.strftime('%d/%m')
+            else:
+                str_date = dt_local.strftime('%d/%m %H:%M')
+            
+            ultimos_movimientos.append({
+                "id": m["id"],
+                "type": m["type"],
+                "text": m["text"],
+                "amount": m["amount"],
+                "date": str_date
+            })
+
+        # --- EMPAQUETADO FINAL DEL JSON ---
         data = {
             "ingresos_mes_seleccionado": ingresos_mes_seleccionado,
             "gastos_mes_seleccionado": gastos_mes_seleccionado,
@@ -110,14 +210,16 @@ def get_analytics():
             "reservas_mes_seleccionado": reservas_mes_seleccionado,
             "tendencia_ingresos_porcentaje": round(tendencia_ingresos, 2),
             "dinero_por_liquidar": total_a_liquidar,
-            "ingresos_por_mes": ingresos_año_completo
+            "ingresos_por_mes": ingresos_año_completo,
+            "desglose_gastos": desglose_gastos,         
+            "ultimos_movimientos": ultimos_movimientos  
         }
         
         response_builder.add_message("Analíticas generadas con éxito").add_status_code(200).add_data(data)
         return response_schema.dump(response_builder.build()), 200
 
     except Exception as e:
-        db.session.rollback() # <--- LIBERA LA CONEXIÓN
+        db.session.rollback() 
         sentry_sdk.capture_exception(e)
         response_builder.add_message(f"Error al generar analíticas: {str(e)}").add_status_code(500)
         return response_schema.dump(response_builder.build()), 500

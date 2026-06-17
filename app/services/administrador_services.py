@@ -1,6 +1,6 @@
 from app.extensions import cache, redis_client, db 
 from app.models import Administrador
-from app.repositories import AdministradorRepository
+from app.repositories.administrador_repository import AdministradorRepository
 from contextlib import contextmanager
 from app.utils.decorators import transactional
 import time

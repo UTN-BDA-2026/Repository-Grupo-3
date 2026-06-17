@@ -48,33 +48,27 @@ class FechaService:
     @transactional
     def add(self, fecha: Fecha) -> Fecha:
         """
-        Agrega una nueva fecha, asegura la transacción y actualiza la caché.
+        Agrega una nueva fecha, asegura la transacción y limpia la caché de forma segura.
         """
         new_fecha = self.repository.add(fecha)
         
         # Generamos el ID en la base de datos manteniendo la transacción abierta
         db.session.flush()
         
-        fecha_fresca = self.repository.get_by_id(new_fecha.id)
-        
-        if fecha_fresca:
-            cache.set(f'fecha_{fecha_fresca.id}', fecha_fresca, timeout=self.CACHE_TIMEOUT)
-        
-        # Limpieza profunda de cachés
+        # invalidamos la llave para forzar una recarga limpia y evitar bucles de memoria.
+        cache.delete(f'fecha_{new_fecha.id}')
         cache.delete('fechas')
         cache.delete('fechas_disponibles')
         cache.delete('todas_las_fechas')
         
-        # El decorador @transactional ejecutará el commit() final justo aquí
-        return fecha_fresca
+        return new_fecha
+
     @transactional
     def update(self, fecha_id: int, updated_data: dict) -> Fecha:
         """
-        Actualiza una fecha obteniéndola directamente del repositorio para 
-        garantizar que esté vinculada a la sesión de SQLAlchemy.
+        Actualiza una fecha obteniéndola directamente del repositorio.
         """
         with self.redis_lock(fecha_id):
-            # Buscamos en la BD, no en la caché, para que el objeto sea "trackeable"
             existing_fecha = self.repository.get_by_id(fecha_id)
 
             if not existing_fecha:
@@ -92,20 +86,13 @@ class FechaService:
                 existing_fecha.estado = updated_data['estado']
 
             db.session.add(existing_fecha)
-            # NOTA: Eliminamos db.session.commit(). El decorador @transactional lo hará al final.
-
-            fecha_fresca = self.repository.get_by_id(fecha_id)
-
-            # Sincronizar caché
-            if fecha_fresca:
-                cache.set(f'fecha_{fecha_id}', fecha_fresca, timeout=self.CACHE_TIMEOUT)
-            
-            # Limpieza profunda de cachés
+            cache.delete(f'fecha_{fecha_id}')
             cache.delete('fechas')
             cache.delete('fechas_disponibles')
             cache.delete('todas_las_fechas')
 
-            return fecha_fresca
+            return existing_fecha
+
     @transactional
     def delete(self, fecha_id: int) -> bool:
         """
@@ -114,14 +101,12 @@ class FechaService:
         with self.redis_lock(fecha_id):
             deleted = self.repository.delete(fecha_id)
             if deleted:
-                # NOTA: Eliminamos db.session.commit(). El decorador @transactional lo hará al final.
                 cache.delete(f'fecha_{fecha_id}')
-                
-                # Limpieza profunda
                 cache.delete('fechas')
                 cache.delete('fechas_disponibles')
                 cache.delete('todas_las_fechas')
             return deleted
+
     def find(self, fecha_id: int) -> Fecha:
         """
         Busca una fecha por ID priorizando la caché.
@@ -140,10 +125,11 @@ class FechaService:
         """
         return self.repository.get_by_dia(dia)
 
+    @transactional 
     def get_or_create(self, dia: date) -> Fecha:
         """
         Busca una fecha. Si no existe, la crea con valores por defecto.
-        Garantiza que siempre haya un registro para operar.
+        Garantiza que la transacción se cierre inmediatamente.
         """
         fecha = self.find_by_dia(dia)
         if not fecha:
